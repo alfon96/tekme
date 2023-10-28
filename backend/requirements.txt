@@ -1,0 +1,6 @@
+fastapi==0.103.1
+pymongo==4.5.0
+uvicorn==0.23.2
+python-decouple==3.8
+pyjwt==2.8.0
+bcrypt==4.0.1

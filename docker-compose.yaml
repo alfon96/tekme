@@ -1,0 +1,22 @@
+version: "3"
+services:
+  frontend:
+    build:
+      context: frontend
+      dockerfile: react-app.dockerfile
+    volumes:
+      - ./frontend/public:/app/public
+      - ./frontend/src:/app/src
+      - ./frontend/package.json:/app/package.json
+    ports:
+      - "3000:3000"
+  backend:
+    build:
+      context: backend
+      dockerfile: fastapi.dockerfile
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:80"
+    env_file:
+      - ./env/fastapi.env
