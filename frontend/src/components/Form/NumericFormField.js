@@ -7,7 +7,7 @@ const FormField = (props) => {
       <input
         className={`${classes.inputField}`}
         id={props.id}
-        type="number"
+        type="radio"
         value={props.value}
         onChange={props.onChange}
         min={props.min}
