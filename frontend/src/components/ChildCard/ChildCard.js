@@ -5,8 +5,11 @@ import Modal from "../../UI/Modal";
 
 const ChildCard = (props) => {
   const [showDetails, setShowDetails] = useState(false);
-  const [showTeacher, setShowTeacher] = useState(false);
+  // const [showTeacher, setShowTeacher] = useState(false);
   const childData = props.childData;
+
+  const dateObj = new Date(childData.date);
+  const dayNumber = dateObj.getDate();
 
   const toggleDetails = () => {
     setShowDetails((prevState) => !prevState);
@@ -15,7 +18,7 @@ const ChildCard = (props) => {
     <>
       {showDetails && (
         <Modal onClose={toggleDetails}>
-          <Details data={childData.detail} />
+          <Details teacher={childData.teacher} detail={childData.detail} />
         </Modal>
       )}
 
@@ -27,7 +30,7 @@ const ChildCard = (props) => {
         } ${classes.childCard}`}
         id={childData.id}
       >
-        <h2 className={classes.date}>{childData.date}</h2>
+        <h2 className={classes.date}>{dayNumber}</h2>
         <div className={classes.childData}>
           <p className={classes.dataRow}>
             Class
@@ -38,7 +41,7 @@ const ChildCard = (props) => {
           <p className={classes.dataRow}>
             Break
             <span>
-              <strong>{childData.break}</strong>/5
+              <strong>{childData.breaks}</strong>/5
             </span>
           </p>
         </div>

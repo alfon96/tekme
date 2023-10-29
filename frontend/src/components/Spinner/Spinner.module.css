@@ -1,0 +1,70 @@
+.Spinner {
+  border-radius: 0.5rem;
+  border-bottom-left-radius: 0;
+  height: 1.5rem;
+  width: 1.5rem;
+  animation: spin 1.4s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: translate(0, -7rem);
+  }
+  30% {
+    transform: translate(0, 0);
+  }
+  40% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: rotate(90deg);
+  }
+  85% {
+    transform: translate(0, 0) rotate(90deg); /* Keep the rotation here */
+  }
+  100% {
+    transform: translate(5rem, 0) rotate(90deg); /* And keep the rotation here */
+  }
+}
+
+.SpinnerAnimateContainer {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.Spinner:nth-child(1) {
+  background-color: #5d4476;
+  animation-delay: -0.8s;
+}
+
+.Spinner:nth-child(2) {
+  background-color: #725390;
+  animation-delay: -0.6s;
+}
+
+.Spinner:nth-child(3) {
+  background-color: #8762ab;
+  animation-delay: -0.4s;
+}
+
+.Spinner:nth-child(4) {
+  background-color: #9c71c5;
+  animation-delay: -0.2s;
+}
+
+.Spinner:nth-child(5) {
+  background-color: #ac81d5;
+  animation-delay: -0s;
+}
+
+.SpinnerContainer {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+}
+
+.LoadingText {
+  font-size: 1.2rem;
+}

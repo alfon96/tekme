@@ -3,6 +3,9 @@ import ChildCard from "../ChildCard/ChildCard";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { useEffect, useState } from "react";
+import Spinner from "../Spinner/Spinner";
+import AddCardBtn from "../AddCardBtn/AddCardBtn";
 
 const DUMMY_ENTRIES = [
   {
@@ -116,11 +119,41 @@ const DUMMY_ENTRIES = [
 ];
 
 const Calendar = () => {
-  let overlay;
+  const [childData, setChildData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+
+  const appendChildData = (newChildData) => {
+    setChildData((prevData) => [...prevData, newChildData]);
+  };
+
+  useEffect(() => {
+    async function fetchChildData() {
+      try {
+        setIsError(false);
+        setIsLoading(true);
+        const Uri = "http://localhost:8000/teachers/Spopovic/11";
+        const response = await fetch(Uri);
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        const result = await response.json();
+        setChildData(result);
+      } catch (error) {
+        setIsError(true);
+        console.error("Fetch error:", error);
+
+        // Here, you might set an 'error' state variable with 'useState' to show the error in your UI.
+      }
+      setIsLoading(false);
+    }
+
+    fetchChildData();
+  }, []); // Empty array ensures this runs only once.
 
   const childName = "Spopovic";
   const dateYear = "November, 2023";
-
+  console.log(childData);
   return (
     <div className={classes.childResume}>
       <div className={classes.childName}>{childName}</div>
@@ -133,11 +166,23 @@ const Calendar = () => {
           />
         </a>
 
-        <div className={classes.dailyEntries}>
-          {DUMMY_ENTRIES.map((dayLog) => (
-            <ChildCard childData={dayLog} />
-          ))}
-        </div>
+        {childData.length > 0 ? (
+          <div className={classes.dailyEntries}>
+            {childData.map((dayLog) => (
+              <ChildCard key={dayLog.id} childData={dayLog} />
+            ))}
+            <AddCardBtn onAdded={appendChildData} />
+          </div>
+        ) : (
+          <div className={classes.noDataContainer}>
+            {isLoading && !isError && <Spinner></Spinner>}
+            {isError && !isLoading && (
+              <p className={classes.noDataText}>
+                Oops! Looks like something is not working properly. Retry later
+              </p>
+            )}
+          </div>
+        )}
 
         <a className={classes.monthCtrlRightArrow} href="#">
           <FontAwesomeIcon

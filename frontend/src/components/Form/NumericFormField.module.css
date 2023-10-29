@@ -1,0 +1,12 @@
+.inputField {
+  border-radius: 1rem;
+  background-color: #f4eef9;
+  border: none;
+  color: inherit;
+  text-align: center;
+}
+
+.inputField:focus {
+  border: 1px solid #9c71c5;
+  outline: none;
+}
