@@ -33,22 +33,22 @@
 }
 
 .Spinner:nth-child(1) {
-  background-color: #5d4476;
+  background-color: var(--bs-primary);
   animation-delay: -0.8s;
 }
 
 .Spinner:nth-child(2) {
-  background-color: #725390;
+  background-color: var(--bs-secondary);
   animation-delay: -0.6s;
 }
 
 .Spinner:nth-child(3) {
-  background-color: #8762ab;
+  background-color: var(--bs-warning);
   animation-delay: -0.4s;
 }
 
 .Spinner:nth-child(4) {
-  background-color: #9c71c5;
+  background-color: var(--bs-info);
   animation-delay: -0.2s;
 }
 

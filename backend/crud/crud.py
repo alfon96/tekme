@@ -17,21 +17,22 @@ def save_kid_log(
         return False
 
 
-def get_kid_log_in_month(kid_name: str, month: int, db: pymongo.database.Database):
+def get_kid_log_in_month(kid_name: str, month: int, year:int,  db: pymongo.database.Database):
     try:
         collection = db.get_collection("Kids")
 
-        end_month = month + 1
-        end_year = 2023
+        next_month = month + 1
+        query_year = year
+
         if month == 12:
-            end_month = 1
-            end_year = 2024
+            next_month = 1
+            query_year += 1
 
         search_query = {
             "name": kid_name,
             "date": {
-                "$gte": datetime(2023, month, 1),
-                "$lt": datetime(end_year, end_month, 1),
+                "$gte": datetime(query_year, month, 1),
+                "$lt": datetime(query_year, next_month, 1),
             },
         }
 

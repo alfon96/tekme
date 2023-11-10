@@ -1,9 +1,8 @@
 import classes from "./CalendarCard.module.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faComment } from "@fortawesome/free-solid-svg-icons";
-import { Card, Button, Modal } from "react-bootstrap";
-import { Tooltip, OverlayTrigger } from "react-bootstrap";
-import { useEffect, useState } from "react";
+import { Card } from "react-bootstrap";
+
 
 const CalendarCard = (props) => {
 
@@ -22,19 +21,20 @@ const CalendarCard = (props) => {
 
     }
 
-    const getColorContactIcon = (data) => {
+    const getColorDay = (data) => {
         if (data.detail && (data.classes === 1 || data.breaks === 1))
-            return "text-dark";
-        return "text-muted opacity-75";
-
+            return "text-secondary";
+        return 'text-dark';
     }
 
 
     return (
-        <Card className={`bg-light border-0 shadow ${classes.customCard}`}>
+
+        <Card className={`bg-light border-0 shadow ${classes.customCard}`}
+            onClick={() => props.handleModalShow(props.data)}>
             <Card.Body>
                 {/* Date info */}
-                <Card.Title className="text-start fw-bold fs-3">
+                <Card.Title className={`text-start fw-bold fs-3 ${getColorDay(props.data)}`}>
                     {getDayNumber(props.data.date)}
                 </Card.Title>
                 {/* Score Info */}
@@ -54,53 +54,68 @@ const CalendarCard = (props) => {
                         </span>
                     </li>
                 </ul>
-                {/* Details info */}
-                <div className="d-flex ">
-                    <OverlayTrigger
-                        key="top"
-                        placement="top"
-                        overlay={
-                            <Tooltip id={`${props.data.id}_details_btn`}>See Details</Tooltip>
-                        }
-                    >
-                        <Button
-                            variant="link"
-                            className="p-0 text-start me-auto"
-                            onClick={() => props.handleModalShow(props.data)}
-                        >
-                            <FontAwesomeIcon
-                                icon={faEye}
-                                size="1x"
-                                className={`${getColorDetailsIcon(props.data)}`}
-                            />
-                        </Button>
-                    </OverlayTrigger>
 
-                    {/* Ask Teacher  */}
-                    <OverlayTrigger
-                        key="top"
-                        placement="top"
-                        overlay={
-                            <Tooltip
-                                id={`${props.data.id}_teacher_btn`}
-                                className={classes.customTooltip}
-                            >
-                                Contact Teacher
-                            </Tooltip>
-                        }
-                    >
-                        <Button variant="link" className="p-0 text-end ms-auto">
-                            <FontAwesomeIcon
-                                icon={faComment}
-                                size="1x"
-                                className={`${getColorContactIcon(props.data)}`}
-                            />
-                        </Button>
-                    </OverlayTrigger>
-                </div>
             </Card.Body>
-        </Card>
+        </Card >
+
     );
 };
 
 export default CalendarCard;
+
+
+
+
+// MAYBE GET RID OF THIS CODE:
+
+// {/* Details info */}
+// <div className="d-flex ">
+// {
+//     props.data.classes === 1 || props.data.breaks === 1 &&
+//     <>
+//         <OverlayTrigger
+//             key="top"
+//             placement="top"
+//             overlay={
+//                 <Tooltip id={`${props.data.id}_details_btn`}>See Details</Tooltip>
+//             }
+//         >
+//             <Button
+//                 variant="link"
+//                 className="p-0 text-start me-auto"
+//                 onClick={() => props.handleModalShow(props.data)}
+//             >
+//                 <FontAwesomeIcon
+//                     icon={faEye}
+//                     size="1x"
+//                     className={`text-secondary`}
+//                 />
+//             </Button>
+//         </OverlayTrigger>
+
+//         {/* Ask Teacher  */}
+//         <OverlayTrigger
+//             key="top"
+//             placement="top"
+//             overlay={
+//                 <Tooltip
+//                     id={`${props.data.id}_teacher_btn`}
+//                     className={classes.customTooltip}
+//                 >
+//                     Contact Teacher
+//                 </Tooltip>
+//             }
+//         >
+//             <Button variant="link" className="p-0 text-end ms-auto">
+//                 <FontAwesomeIcon
+//                     icon={faComment}
+//                     size="1x"
+//                     className={`$text-dark`}
+//                 />
+//             </Button>
+//         </OverlayTrigger>
+//     </>
+// }
+
+
+// </div>

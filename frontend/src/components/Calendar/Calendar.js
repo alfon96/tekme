@@ -124,7 +124,7 @@ const Calendar = (props) => {
   };
   const handleModalClose = () => setModalInfo({ show: false, data: {} });
 
-  const childName = "Spopovic";
+
 
 
   function getDayNumber(dateTimeObj) {
@@ -135,8 +135,12 @@ const Calendar = (props) => {
 
 
   function getModalBody(data) {
+    // Create the Body of the Modal with Classes and Breaks Score and
+    // adding the details and teacher's name 
     return (
       <>
+
+        {/* Classes And Breaks Score */}
         {data && (
           <div className="mb-5">
             <p className=" mb-2">
@@ -148,6 +152,7 @@ const Calendar = (props) => {
           </div>
         )}
 
+        {/* Details And Teacher's Name */}
         {data && data.detail ? (
           <>
             <p className="text-center fst-italic mb-5">
@@ -173,44 +178,38 @@ const Calendar = (props) => {
   return (
     <>
       <section
-        className={`position-relative vh-100 text-center ${classes.calendarContainer} overflow-x-hidden`}
+        className={`text-center overflow-x-hidden`}
       >
-        {/* Basic Information: Name, Age, Current Displayed Month & Year */}
-        <div className="container position-relative z-3">
-          <div className="text-container">
-            <h2 className="display-4 fw-bold mt-5 mb-4 text-primary">
-              {childName}
-            </h2>
-            <div className="d-flex gap-5 align-items-center justify-content-center mb-5">
-              <Button variant="bg-dark" className="btn-outline-dark" onClick={() => props.handleMonthSelection(false)} >Prev</Button>
-              <h3 className="text-muted fs-5">{props.selectedMonthYear}</h3>
-              <Button variant="bg-dark" className="btn-outline-dark" onClick={() => props.handleMonthSelection(true)} >Next</Button>
+        {/* Actual Calendar */}
+        {childData.length > 0 ?
+          <div className="row p-5 justify-content-start">
+            {
+              childData.map((dayInfo) => (
+                <div className="col-xl-2 col-lg-3 col-md-3 col-sm-4 col-xs-6 mb-3">
+                  <CalendarCard data={dayInfo} handleModalShow={handleModalShow} />
+                </div>
+              ))
 
-            </div>
+            }
+
+            {/* Details Modal */}
+            <SimpleModal
+              show={modalInfo.show}
+              title={`${getDayNumber(
+                modalInfo.data.date
+              )} - ${props.selectedMonthYear}`}
+              body={getModalBody(modalInfo.data)}
+              handleModalClose={handleModalClose}
+              actionBtnText="Ask Teacher"
+            />
 
           </div>
-        </div>
+          :
+          <div className="container-sm mx-auto w-75 my-6 py-5 opacity-75 rounded-5 bg-light">
+            <h5 className="text-center text-dark">No entries for this month</h5>
+          </div>
 
-        {/* Actual Calendar */}
-        <div className="row p-5 justify-content-start">
-          {childData.map((dayInfo) => (
-            <div className="col-xl-2 col-lg-3 col-md-3 col-sm-4 col-xs-6 mb-3">
-              <CalendarCard data={dayInfo} handleModalShow={handleModalShow} />
-            </div>
-          ))}
-
-          {/* Details Modal */}
-          <SimpleModal
-            show={modalInfo.show}
-            title={`${getDayNumber(
-              modalInfo.data.date
-            )} - ${props.selectedMonthYear}`}
-            body={getModalBody(modalInfo.data)}
-            handleModalClose={handleModalClose}
-            actionBtnText="Ask Teacher"
-          />
-
-        </div>
+        }
       </section>
     </>
   );

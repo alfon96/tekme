@@ -1,8 +1,8 @@
-import classes from "./Spinner.module.css";
+import classes from "./Spinner.module.scss";
 
 const Spinner = () => {
   return (
-    <div className={`container-lg d-flex justify-content-center align-items-center vh-100 ${classes.SpinnerContainer}`}>
+    <div className={`container-sm  h-25 align-items-center justify-content-center ${classes.SpinnerContainer}`}>
       <div className={classes.SpinnerAnimateContainer}>
         <div className={classes.Spinner}></div>
         <div className={classes.Spinner}></div>
@@ -10,7 +10,7 @@ const Spinner = () => {
         <div className={classes.Spinner}></div>
       </div>
 
-      <p className={classes.LoadingText}>Fetching Data...</p>
+      <p className={`text-muted mt-2 fw-semibold `}>Fetching Data...</p>
     </div>
   );
 };

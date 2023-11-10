@@ -2,8 +2,8 @@ import classes from './SimpleModal.module.scss';
 import { Button, Modal } from 'react-bootstrap';
 
 const SimpleModal = (props) => {
-    return <Modal show={props.show} onHide={props.close} centered>
-        <Modal.Header closeButton>
+    return <Modal show={props.show} className={classes.simpleModal} onHide={props.handleModalClose} centered>
+        <Modal.Header closeButton >
             <Modal.Title className="text-dark">{props.title}</Modal.Title>
         </Modal.Header>
         <Modal.Body>

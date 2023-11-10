@@ -2,9 +2,9 @@
 $font-family-sans-serif: "Open Sans", sans-serif;
 
 // Colors
-$primary: #6159E6;
-$secondary: #DE4F3B;
-$dark: #3D3B54;
+$primary: #6159e6;
+$secondary: #de4f3b;
+$dark: #3d3b54;
 $light: #f9f7fc;
 $body-color: #1f1727;
 $headings-color: $dark;
@@ -29,8 +29,6 @@ $spacers: (
   7: $spacer * 8,
   8: $spacer * 12,
 ) !default;
-
-
 
 $heading-margin-bottom: $spacer * 1 !default;
 $line-height-base: 1.7;
@@ -59,8 +57,11 @@ $input-border-radius: $input-radius;
 $input-border-radius-sm: $input-radius;
 $input-border-radius-lg: $input-radius;
 
-
 // Tooltip
 $bs-tooltip-bg: #ffffff !default;
+
+.modal-content {
+  border: 0;
+}
 
 @import "../../node_modules/bootstrap/scss/bootstrap";

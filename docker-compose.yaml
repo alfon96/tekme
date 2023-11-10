@@ -20,3 +20,11 @@ services:
       - "8000:80"
     env_file:
       - ./env/fastapi.env
+  ngrok:
+    image: wernight/ngrok
+    ports:
+      - "4040:4040"
+    env_file:
+      - ./env/ngrok.env
+    depends_on:
+      - frontend
