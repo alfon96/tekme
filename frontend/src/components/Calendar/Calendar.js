@@ -1,11 +1,8 @@
-import classes from "./Calendar.module.css";
-import ChildCard from "../ChildCard/ChildCard";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import classes from "./Calendar.module.scss";
 import { useEffect, useState } from "react";
-import Spinner from "../Spinner/Spinner";
-import AddCardBtn from "../AddCardBtn/AddCardBtn";
+import SimpleModal from "../../UI/SimpleModal";
+import CalendarCard from "../Cards/CalendarCard";
+import { Button } from "react-bootstrap";
 
 const DUMMY_ENTRIES = [
   {
@@ -118,80 +115,104 @@ const DUMMY_ENTRIES = [
   },
 ];
 
-const Calendar = () => {
-  const [childData, setChildData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isError, setIsError] = useState(false);
+const Calendar = (props) => {
+  const [modalShow, setModalShow] = useState(false);
+  const [modalInfo, setModalInfo] = useState({ show: false, data: {} });
 
-  const appendChildData = (newChildData) => {
-    setChildData((prevData) => [...prevData, newChildData]);
+  const handleModalShow = (dayInfo) => {
+    setModalInfo({ show: true, data: { ...dayInfo } });
   };
-
-  useEffect(() => {
-    async function fetchChildData() {
-      try {
-        setIsError(false);
-        setIsLoading(true);
-        const Uri = "http://localhost:8000/teachers/Spopovic/11";
-        const response = await fetch(Uri);
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        const result = await response.json();
-        setChildData(result);
-      } catch (error) {
-        setIsError(true);
-        console.error("Fetch error:", error);
-
-        // Here, you might set an 'error' state variable with 'useState' to show the error in your UI.
-      }
-      setIsLoading(false);
-    }
-
-    fetchChildData();
-  }, []); // Empty array ensures this runs only once.
+  const handleModalClose = () => setModalInfo({ show: false, data: {} });
 
   const childName = "Spopovic";
-  const dateYear = "November, 2023";
-  console.log(childData);
-  return (
-    <div className={classes.childResume}>
-      <div className={classes.childName}>{childName}</div>
-      <div className={classes.monthYear}>{dateYear}</div>
-      <div className={classes.calendar}>
-        <a className={classes.monthCtrlLeftArrow} href="#">
-          <FontAwesomeIcon
-            icon={faChevronLeft}
-            className={classes.arrowIcons}
-          />
-        </a>
 
-        {childData.length > 0 ? (
-          <div className={classes.dailyEntries}>
-            {childData.map((dayLog) => (
-              <ChildCard key={dayLog.id} childData={dayLog} />
-            ))}
-            <AddCardBtn onAdded={appendChildData} />
-          </div>
-        ) : (
-          <div className={classes.noDataContainer}>
-            {isLoading && !isError && <Spinner></Spinner>}
-            {isError && !isLoading && (
-              <p className={classes.noDataText}>
-                Oops! Looks like something is not working properly. Retry later
-              </p>
-            )}
+
+  function getDayNumber(dateTimeObj) {
+    const date = new Date(dateTimeObj);
+    return date.getDate().toString().padStart(2, "0");
+  }
+  const childData = props.fetchedData;
+
+
+  function getModalBody(data) {
+    return (
+      <>
+        {data && (
+          <div className="mb-5">
+            <p className=" mb-2">
+              <strong>Classes:</strong> {data.classes}/5
+            </p>
+            <p className="">
+              <strong>Break:</strong> {data.breaks}/5
+            </p>
           </div>
         )}
 
-        <a className={classes.monthCtrlRightArrow} href="#">
-          <FontAwesomeIcon
-            icon={faChevronRight}
-            className={classes.arrowIcons}
+        {data && data.detail ? (
+          <>
+            <p className="text-center fst-italic mb-5">
+              "{data.detail}"
+            </p>
+            <span className="d-block text-end">
+              {" "}
+              Tr -{" "}
+              <span className="text-center text-dark fw-semibold fst-italic">
+                {data.teacher}
+              </span>
+            </span>
+          </>
+        ) : (
+          <p className="text-center fst-italic mb-5">
+            No details present for this day
+          </p>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <section
+        className={`position-relative vh-100 text-center ${classes.calendarContainer} overflow-x-hidden`}
+      >
+        {/* Basic Information: Name, Age, Current Displayed Month & Year */}
+        <div className="container position-relative z-3">
+          <div className="text-container">
+            <h2 className="display-4 fw-bold mt-5 mb-4 text-primary">
+              {childName}
+            </h2>
+            <div className="d-flex gap-5 align-items-center justify-content-center mb-5">
+              <Button variant="bg-dark" className="btn-outline-dark" onClick={() => props.handleMonthSelection(false)} >Prev</Button>
+              <h3 className="text-muted fs-5">{props.selectedMonthYear}</h3>
+              <Button variant="bg-dark" className="btn-outline-dark" onClick={() => props.handleMonthSelection(true)} >Next</Button>
+
+            </div>
+
+          </div>
+        </div>
+
+        {/* Actual Calendar */}
+        <div className="row p-5 justify-content-start">
+          {childData.map((dayInfo) => (
+            <div className="col-xl-2 col-lg-3 col-md-3 col-sm-4 col-xs-6 mb-3">
+              <CalendarCard data={dayInfo} handleModalShow={handleModalShow} />
+            </div>
+          ))}
+
+          {/* Details Modal */}
+          <SimpleModal
+            show={modalInfo.show}
+            title={`${getDayNumber(
+              modalInfo.data.date
+            )} - ${props.selectedMonthYear}`}
+            body={getModalBody(modalInfo.data)}
+            handleModalClose={handleModalClose}
+            actionBtnText="Ask Teacher"
           />
-        </a>
-      </div>
-    </div>
+
+        </div>
+      </section>
+    </>
   );
 };
 

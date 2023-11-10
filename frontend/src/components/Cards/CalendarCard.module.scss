@@ -1,0 +1,8 @@
+.customCard {
+  opacity: 0.85;
+}
+
+.customCard:hover {
+  transform: scale(1.05);
+  transition: all 0.3s ease-in-out;
+}
