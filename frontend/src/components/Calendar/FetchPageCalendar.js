@@ -1,8 +1,8 @@
 import classes from "./FetchPageCalendar.module.scss";
 import { useEffect, useState } from "react";
 import Spinner from "../Spinner/Spinner";
-import Calendar from "../Calendar/Calendar";
-import CalendarHeader from "../Calendar/CalendarHeader";
+import Calendar from "./Calendar";
+import CalendarHeader from "./CalendarHeader";
 import useApiCall from "../../hooks/use-api-call";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faComment, faChat } from "@fortawesome/free-solid-svg-icons";
@@ -64,7 +64,7 @@ const FetchPageCalendar = (props) => {
 
             {/* Handle Loading State And Possible Error in Fetching Data */}
             {loading && !error && <Spinner />}
-            {error && <p className="text-bg-danger fw-bold">Some Error Occurred</p>}
+            {error && <div className=" container-sm w-50 opacity-75 rounded-5 py-3 my-8 text-bg-danger fw-bold">Some Error Occurred</div>}
 
             {/* Show the Month Details using the fetched data */}
             {!error && !loading &&

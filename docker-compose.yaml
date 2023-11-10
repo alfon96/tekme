@@ -4,12 +4,16 @@ services:
     build:
       context: frontend
       dockerfile: react-app.dockerfile
+      args:
+        - REACT_APP_SECRET_KEY=${REACT_APP_SECRET_KEY}
     volumes:
       - ./frontend/public:/app/public
       - ./frontend/src:/app/src
       - ./frontend/package.json:/app/package.json
     ports:
       - "3000:3000"
+    env_file:
+      - ./env/react.env
   backend:
     build:
       context: backend
@@ -18,6 +22,7 @@ services:
       - ./backend:/app
     ports:
       - "8000:80"
+      - "5678:5678"
     env_file:
       - ./env/fastapi.env
   ngrok:

@@ -1,6 +1,4 @@
 import classes from "./CalendarCard.module.scss";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faComment } from "@fortawesome/free-solid-svg-icons";
 import { Card } from "react-bootstrap";
 
 

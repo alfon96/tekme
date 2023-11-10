@@ -1,10 +1,23 @@
-import Calendar from "./components/Calendar/Calendar";
+
 import "./App.css";
-import Dummy from "./components/Dummy";
-import FetchPageCalendar from "./components/Page/FetchPageCalendar"
+import LoginPage from "./UI/LoginPage";
+import FetchPageCalendar from "./components/Calendar/FetchPageCalendar"
+
+import { useSelector } from 'react-redux';
+import useHttp from "./hooks/use-http";
 
 function App() {
-  return <FetchPageCalendar childName="Spopovic"></FetchPageCalendar>;
+
+
+  const token = useSelector((state) => state.token);
+
+
+
+  return <>
+    {token === null && <LoginPage />}
+    {token != null && <FetchPageCalendar childName="Spopovic"></FetchPageCalendar>}
+  </>;
+
 }
 
 export default App;

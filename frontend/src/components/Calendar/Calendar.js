@@ -1,7 +1,7 @@
 import classes from "./Calendar.module.scss";
 import { useEffect, useState } from "react";
 import SimpleModal from "../../UI/SimpleModal";
-import CalendarCard from "../Cards/CalendarCard";
+import CalendarCard from "./CalendarCard";
 import { Button } from "react-bootstrap";
 
 const DUMMY_ENTRIES = [
@@ -116,7 +116,6 @@ const DUMMY_ENTRIES = [
 ];
 
 const Calendar = (props) => {
-  const [modalShow, setModalShow] = useState(false);
   const [modalInfo, setModalInfo] = useState({ show: false, data: {} });
 
   const handleModalShow = (dayInfo) => {
@@ -124,15 +123,12 @@ const Calendar = (props) => {
   };
   const handleModalClose = () => setModalInfo({ show: false, data: {} });
 
-
-
-
   function getDayNumber(dateTimeObj) {
     const date = new Date(dateTimeObj);
     return date.getDate().toString().padStart(2, "0");
   }
-  const childData = props.fetchedData;
 
+  const childData = props.fetchedData;
 
   function getModalBody(data) {
     // Create the Body of the Modal with Classes and Breaks Score and
