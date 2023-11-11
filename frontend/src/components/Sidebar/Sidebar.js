@@ -7,25 +7,20 @@ import { Container, Row, Col } from 'react-bootstrap';
 
 const Sidebar = (props) => {
     const [isCollapse, setIsCollapse] = useState(false);
-    return <Container fluid className={`vh-100 bg-light ms-0 py-6 position-relative ${isCollapse ? classes.collapsed : 'w-100'} ${classes.sidebar}`} >
-        <Row className='gap-3'>
-            <Col md={12}>
-                <button className={classes.toggleBtn} onClick={() => setIsCollapse((prevValue) => !prevValue)}>
-                    <FontAwesomeIcon
-                        icon={faChevronRight}
-                        size="1x"
-                        className={`text-dark z-3  ${isCollapse ? classes.sidebarIconLeft : classes.sidebarIconRight}`}
-                    />
+    return <div className={`py-6  ${isCollapse ? classes.collapsed : 'w-100'} ${classes.sidebar}`} >
 
-                </button>
-            </Col>
-            <Col md={12}>
-                {!isCollapse && props.children}
-            </Col>
+        <button className={classes.toggleBtn} onClick={() => setIsCollapse((prevValue) => !prevValue)}>
+            <FontAwesomeIcon
+                icon={faChevronRight}
+                size="1x"
+                className={`text-dark z-3  ${isCollapse ? classes.sidebarIconLeft : classes.sidebarIconRight}`}
+            />
 
+        </button>
 
-        </Row >
-    </Container >;
+        {!isCollapse && props.children}
+
+    </div >;
 }
 
 export default Sidebar;

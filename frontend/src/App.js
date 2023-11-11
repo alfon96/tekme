@@ -4,8 +4,7 @@ import LoginPage from "./UI/LoginPage";
 import FetchPageCalendar from "./components/Calendar/FetchPageCalendar"
 import { useSelector } from 'react-redux';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import SearchPage from "./components/SearchPage/HomePage";
-import Classes from "./components/Teachers/Classes";
+import SearchPage from "./components/HomePage/HomePage";
 import useHttp from "./hooks/use-http";
 
 
@@ -36,7 +35,6 @@ function App() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/signin" element={<LoginPage />} />
         <Route path="/home" element={<SearchPage />} />
-        <Route path="/classes/:classId" element={<Classes />} loader={classesLoader} />
 
         <Route path="/calendar" element={<FetchPageCalendar />} />
 

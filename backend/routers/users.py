@@ -13,7 +13,15 @@ users = APIRouter(prefix="/users")
 @users.post("/signup")
 
 # Assuming a function to validate tokens
-async def verify_token(token: str = Header(...)):
+async def verify_token(authorization: str = Header(...)):
+    if authorization is None or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401, detail="Invalid or missing authorization header"
+        )
+
+    # Extract token from the authorization header
+    token = authorization.split(" ")[1]
+
     if not encryption.check_token(token):
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -67,11 +75,15 @@ async def signin(credentials: SignInModel, role: str, db: Database = Depends(get
 
 @users.get("/classes/{class_name}")
 async def get_class(
-    class_name: str, token: str = Depends(verify_token), db: Database = Depends(get_db)
+    class_name: str, _: str = Depends(verify_token), db: Database = Depends(get_db)
 ):
     try:
         class_data = crud.get_class_by_name(class_name, db)
+        if not class_data:
+            raise HTTPException(status_code=404, detail="No data found for this class")
+
         return {**class_data, "_id": str(class_data["_id"])}
+
     # except SomeMongoDBException as e:
     #     raise HTTPException(status_code=500, detail="Database error")
     except Exception as e:
