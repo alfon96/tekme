@@ -82,8 +82,11 @@ def get_class_by_name(class_name: str, db: pymongo.database.Database):
     """
     Fetch a class by name.
     """
-    collection = get_collection("Classes", db)
-    return collection.find_one({"name": class_name})
+    try:
+        collection = db["Classes"]
+        return collection.find_one({"name": class_name})
+    except Exception as e:
+        raise e
 
 
 def get_user_by_email(role: str, email: str, db: pymongo.database.Database):

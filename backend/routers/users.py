@@ -65,14 +65,14 @@ async def signin(credentials: SignInModel, role: str, db: Database = Depends(get
     return {"token": token, "user_id": str(user["_id"]), "role": role}
 
 
-@users.get("/classes/{class_id}")
+@users.get("/classes/{class_name}")
 async def get_class(
     class_name: str, token: str = Depends(verify_token), db: Database = Depends(get_db)
 ):
     try:
-        class_data = await crud.get_class_by_name(class_name, db)
-        return class_data
+        class_data = crud.get_class_by_name(class_name, db)
+        return {**class_data, "_id": str(class_data["_id"])}
     # except SomeMongoDBException as e:
     #     raise HTTPException(status_code=500, detail="Database error")
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Bad request")
+        raise HTTPException(status_code=400, detail=str(e))

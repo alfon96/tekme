@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import SearchPage from "./components/SearchPage/HomePage";
 import Classes from "./components/Teachers/Classes";
+import useHttp from "./hooks/use-http";
 
 
 function App() {
@@ -15,10 +16,10 @@ function App() {
   const classesLoader = async ({ params }) => {
     const { classId } = params;
     try {
-      const url = `http://localhost:8000/users/signin?role=${role}`
+      const url = `http://localhost:8000/users/signin?role=`
       const header = { "Authorization Bearer": token }
 
-      const data = await sendRequest({ url: url, method: 'GET', header: header });
+      const response = await sendRequest({ url: url, method: 'GET', header: header });
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
