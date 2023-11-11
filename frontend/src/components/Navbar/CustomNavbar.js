@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 const CustomNavbar = () => {
     const dispatch = useDispatch();
     let navigate = useNavigate();
+
     const handleLogout = () => {
         console.log('Logging out');
         dispatch(logout());
@@ -56,14 +57,14 @@ const CustomNavbar = () => {
                             </Form>
 
                             <Nav className="justify-content-end align-items-center flex-grow-1 pe-3">
-                                <Nav.Link href="#action1">Home</Nav.Link>
+                                <Nav.Link onClick={() => navigate('/home')}>Home</Nav.Link>
                                 <Nav.Link href="#action2">Chat</Nav.Link>
                                 <NavDropdown
                                     title="Actions"
                                     id={`offcanvasNavbarDropdown-expand-${'md'}`}
                                 >
                                     <NavDropdown.Item>Profile</NavDropdown.Item>
-                                    <NavDropdown.Item href="#calendar">
+                                    <NavDropdown.Item onClick={() => navigate('/calendar')}>
                                         Calendar
                                     </NavDropdown.Item>
                                     <NavDropdown.Divider />
@@ -76,7 +77,7 @@ const CustomNavbar = () => {
                         </Offcanvas.Body>
                     </Navbar.Offcanvas>
                 </Container>
-            </Navbar>
+            </Navbar >
 
 
         </>
