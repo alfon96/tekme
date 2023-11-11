@@ -6,7 +6,7 @@ import classes from './CalendarHeader.module.scss'
 const CalendarHeader = (props) => {
     return <div className="container position-relative z-3 mb-5">
         <div className="text-container">
-            <h2 className="display-4 fw-bold mt-5 mb-4 text-primary">
+            <h2 className="display-4 fw-bold mt-6 mb-4 text-primary">
                 {props.childName}
             </h2>
             <div className="d-flex gap-5 align-items-center justify-content-center ">

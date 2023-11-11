@@ -1,8 +1,7 @@
-import classes from "./Calendar.module.scss";
-import { useEffect, useState } from "react";
+import {  useState } from "react";
 import SimpleModal from "../../UI/SimpleModal";
 import CalendarCard from "./CalendarCard";
-import { Button } from "react-bootstrap";
+
 
 const DUMMY_ENTRIES = [
   {

@@ -5,7 +5,8 @@ import Calendar from "./Calendar";
 import CalendarHeader from "./CalendarHeader";
 import useApiCall from "../../hooks/use-api-call";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faComment, faChat } from "@fortawesome/free-solid-svg-icons";
+import { faComment } from "@fortawesome/free-solid-svg-icons";
+import CustomNavbar from '../Navbar/CustomNavbar';
 
 const FetchPageCalendar = (props) => {
     const defaultMonthYear = () => {
@@ -59,6 +60,9 @@ const FetchPageCalendar = (props) => {
 
     return (
         <div className={`position-relative vh-100 text-center ${classes.calendarContainer} overflow-x-hidden`}>
+            {/* Navbar */}
+            <CustomNavbar />
+
             {/* Basic Information: Name, Age, Current Displayed Month & Year And Control Current Month Year */}
             <CalendarHeader childName={childName} handleMonthSelection={handleMonthSelection} selectedMonthYear={getMonthYearName(monthYear)} />
 

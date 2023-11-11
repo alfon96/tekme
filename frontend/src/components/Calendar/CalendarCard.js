@@ -9,16 +9,6 @@ const CalendarCard = (props) => {
         return date.getDate().toString().padStart(2, "0");
     }
 
-    const getColorDetailsIcon = (data) => {
-
-        if (data.detail && (data.classes >= 2 && data.breaks >= 2))
-            return "text-primary opacity-75";
-        if (data.detail && (data.classes === 1 || data.breaks === 1))
-            return "text-secondary";
-        return "text-muted opacity-50";
-
-    }
-
     const getColorDay = (data) => {
         if (data.detail && (data.classes === 1 || data.breaks === 1))
             return "text-secondary";

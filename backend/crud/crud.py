@@ -78,6 +78,14 @@ def get_user_by_phone(role: str, phone: str, db: pymongo.database.Database):
     return collection.find_one({"phone": phone})
 
 
+def get_class_by_name(class_name: str, db: pymongo.database.Database):
+    """
+    Fetch a class by name.
+    """
+    collection = get_collection("Classes", db)
+    return collection.find_one({"name": class_name})
+
+
 def get_user_by_email(role: str, email: str, db: pymongo.database.Database):
     """
     Fetch a user by email from a role-specific collection.

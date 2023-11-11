@@ -6,4 +6,26 @@
 
 .customCard {
   opacity: 0.95;
+  width: 410px;
+  max-width: 100%;
+}
+
+.glowing {
+  animation: glow 3s infinite !important;
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 0 0 var(--bs-primary);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 var(--bs-primary);
+  }
+}
+
+.passwordInfo {
+  font-size: 0.85rem !important;
 }

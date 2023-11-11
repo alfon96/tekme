@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import axios from 'axios';
 
-const useApiCall = (uri, applyData, defaultDelay = 300) => {
+const useApiCall = (uri, applyData, defaultDelay = 400) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const cancelTokenRef = useRef();

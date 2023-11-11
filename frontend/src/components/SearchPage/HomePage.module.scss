@@ -1,0 +1,44 @@
+.bgImage {
+  background: #fff url("../../assets/search.svg") no-repeat center center;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 30px;
+  width: 50px; // Width of the collapsed sidebar
+  height: calc(100% - 30px); // Full height minus the top offset
+  background-color: #f8f9fa;
+  transition: width 0.3s ease;
+  overflow-x: hidden; // Hide content that overflows on the x-axis
+
+  &.expanded {
+    width: 250px; // Width of the expanded sidebar
+  }
+}
+
+.toggle-button {
+  position: fixed;
+  top: 30px; // Align with the top of the sidebar
+  left: 50px; // Position to the right of the collapsed sidebar
+  background-color: #000;
+  border-radius: 50%;
+  width: 30px; // Width of the button
+  height: 30px; // Height of the button
+  color: #fff;
+  text-align: center;
+  cursor: pointer;
+
+  &:hover {
+    background-color: darken(#000, 10%);
+  }
+
+  .button-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+}

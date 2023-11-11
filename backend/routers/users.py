@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
+from typing import Optional
 from schemas.schemas import SignUpModel, SignInModel
 from crud import crud
 from pymongo.database import Database
@@ -10,6 +11,13 @@ users = APIRouter(prefix="/users")
 
 
 @users.post("/signup")
+
+# Assuming a function to validate tokens
+async def verify_token(token: str = Header(...)):
+    if not encryption.check_token(token):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
 async def signup(user_details: SignUpModel, db: Database = Depends(get_db)):
     try:
         # Cripta la password
@@ -55,3 +63,16 @@ async def signin(credentials: SignInModel, role: str, db: Database = Depends(get
     token = encryption.create_jwt_token(str(user["_id"]), role)
 
     return {"token": token, "user_id": str(user["_id"]), "role": role}
+
+
+@users.get("/classes/{class_id}")
+async def get_class(
+    class_name: str, token: str = Depends(verify_token), db: Database = Depends(get_db)
+):
+    try:
+        class_data = await crud.get_class_by_name(class_name, db)
+        return class_data
+    # except SomeMongoDBException as e:
+    #     raise HTTPException(status_code=500, detail="Database error")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Bad request")

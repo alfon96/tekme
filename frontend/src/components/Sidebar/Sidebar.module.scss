@@ -1,0 +1,56 @@
+.toggleBtn {
+  border: 0;
+  background: transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px 0 rgba($color: #000000, $alpha: 0.15);
+  transition: all 0.3s ease-in-out;
+}
+
+.toggleBtn:hover {
+  transform: scale(1.05);
+}
+
+.collapsed {
+  width: 60px;
+}
+
+.sidebar {
+  transition: width 0.3s ease-in-out;
+}
+
+$animation-speed: 0.5s;
+
+.sidebarIconLeft {
+  animation: rotateLeft ease-in-out $animation-speed forwards;
+}
+
+@keyframes rotateLeft {
+  0% {
+    transform: rotateZ(0deg);
+  }
+  50% {
+    transform: rotateZ(215deg);
+  }
+
+  100% {
+    transform: rotateZ(180deg);
+  }
+}
+
+.sidebarIconRight {
+  animation: rotateRight linear $animation-speed forwards;
+}
+
+@keyframes rotateRight {
+  0% {
+    transform: rotateZ(180deg);
+  }
+  50% {
+    transform: rotateZ(-35deg);
+  }
+  100% {
+    transform: rotateZ(0deg);
+  }
+}
