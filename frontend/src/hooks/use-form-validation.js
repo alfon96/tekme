@@ -1,21 +1,32 @@
 import { useState, useEffect } from 'react';
-import { object, string } from 'yup';
+import * as Yup from 'yup';
 
 // Define the validation schema outside the hook for performance reasons
-const validationSchema = object().shape({
-    email: string().email('Invalid email').required('Email is required'),
-    password: string().matches(
+const validationSchema = Yup.object().shape({
+    email: Yup.string().email('Invalid email').required('Email is required'),
+    password: Yup.string().matches(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&*!])[A-Za-z\d@#$%^&*!]{8,}$/,
         'Invalid Password'
     ).required('Password is required'),
+    name: Yup.string().required('Name is required'),
+    surname: Yup.string().required('Surname is required'),
+    dateOfBirth: Yup.date()
+        .transform((value, originalValue) => {
+            // Se la stringa è vuota, restituisci null per evitare "Invalid Date"
+            return originalValue === '' ? null : new Date(originalValue);
+        })
+        .max(new Date(), 'Date of birth cannot be in the future')
+        .required('Date of birth is required')
+        .typeError('Date of birth is not valid'), // Messaggio personalizzato per tipo non valido
 });
 
 export const useFormValidation = (initialState) => {
     const [formState, setFormState] = useState(initialState);
     const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({}); // Aggiunto per tenere traccia dei campi che sono stati modificati
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Validate the field on blur
+    // Validate the field on blur or change if it's already been touched
     const validateField = async (name, value) => {
         try {
             // Validate the field only
@@ -29,10 +40,16 @@ export const useFormValidation = (initialState) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormState((prev) => ({ ...prev, [name]: value }));
+
+        // Se il campo è stato già toccato, valida al cambiamento
+        if (touched[name]) {
+            validateField(name, value);
+        }
     };
 
     const handleBlur = (e) => {
         const { name, value } = e.target;
+        setTouched((prev) => ({ ...prev, [name]: true })); // Imposta il campo come "toccato"
         validateField(name, value);
     };
 

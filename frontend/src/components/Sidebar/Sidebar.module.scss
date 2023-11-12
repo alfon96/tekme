@@ -25,7 +25,8 @@
   background-color: var(--bs-light);
   padding-left: 13px;
   padding-right: 13px;
-  max-width: 300px;
+  max-width: 300px !important;
+  flex-shrink: 0 !important;
 }
 
 $animation-speed: 0.5s;

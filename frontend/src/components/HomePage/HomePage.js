@@ -1,14 +1,11 @@
-import { Container, Row, Col } from 'react-bootstrap';
+import { Container } from 'react-bootstrap';
 import CustomNavbar from '../Navbar/CustomNavbar';
 import classes from './HomePage.module.scss';
-import ListGroup from 'react-bootstrap/ListGroup';
 import Accordion from 'react-bootstrap/Accordion';
 import Button from 'react-bootstrap/Button';
 import React, { useState } from 'react';
-import { Offcanvas } from 'react-bootstrap';
 import Sidebar from '../Sidebar/Sidebar'
 import Classes from '../Classes/Classes';
-
 
 const HomePage = () => {
     const [selectedClass, setSelectedClass] = useState('');
