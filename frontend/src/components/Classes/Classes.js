@@ -1,116 +1,58 @@
-import { Container, Card } from "react-bootstrap";
-import classes from "./Classes.module.scss";
-import useHttp from "../../hooks/use-http";
-import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import React, { useEffect, useRef, useState } from "react";
+import { Container } from "react-bootstrap";
 import Spinner from "../Spinner/Spinner";
-import Table from 'react-bootstrap/Table';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import TableRow from "./TableRow";
-import InputTableRow from "./InputTableRow";
-import Toolbar from "../HomePage/Toolbar";
+import DataTable from "./DataTable";
+import { useDispatch, useSelector } from 'react-redux';
+import { updateData } from "../../store/editingSlice";
+import useHttp from "../../hooks/use-http";
+import classes from "./Classes.module.scss";
+import { v4 as uuidv4 } from 'uuid';
 
-const Classes = (props) => {
+const Classes = () => {
+    const dispatch = useDispatch();
     const { isLoading, error, sendRequest } = useHttp();
-    const [classData, setClassData] = useState([]);
-    const token = useSelector((state) => state.token);
-    const [historyEdit, setHistoryEdit] = useState([]);
-    const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+    const { dataTitle, currentData } = useSelector((state) => state.editing);
 
-    const handleSubmission = (newStudent) => {
-        console.log(newStudent);
-        setClassData((prevClassValue) => {
-            if (initialDataLoaded) {
-                setHistoryEdit((prevValue) => [...prevValue, [...prevClassValue]]);
-            }
-            return [...prevClassValue, newStudent];
-        });
+    const token = useSelector((state) => state.auth.token);
 
-    }
+    const addUniqueIds = (inputList) => {
+        return inputList.map(item => ({
+            ...item,
+            id: uuidv4()
+        }));
+    };
 
+    // Use Effect Needed to fetch ddata from the API
     useEffect(() => {
         const fetchData = async () => {
-            setClassData([]);
+            if (currentData.length === 0) {
+                try {
+                    const url = `http://localhost:8000/users/classes/${dataTitle}`;
+                    const headers = { "Authorization": `Bearer ${token}` };
+                    const response = await sendRequest({ url, method: "GET", headers });
+                    const studentsWithIds = addUniqueIds(response.students);
+                    console.log(studentsWithIds);
+                    dispatch(updateData(...studentsWithIds));
 
-            try {
-                const url = `http://localhost:8000/users/classes/${props.selectedClass}`;
-                const headers = { "Authorization": `Bearer ${token}` };
-
-                const response = await sendRequest({
-                    url: url,
-                    method: "GET",
-                    headers: headers,
-                });
-                console.log(response);
-                setClassData(response.students);
-                setInitialDataLoaded(true);
-            } catch (error) {
-                console.error(`An error occurred: ${error}`);
-                // Handle error here, maybe set an error state
+                } catch (error) {
+                    console.error(`An error occurred: ${error}`);
+                }
             }
         };
 
         fetchData();
-    }, [props.selectedClass, token, sendRequest]);
+    }, [dataTitle, sendRequest]);
 
 
-    const isDataPresent = !isLoading && classData && classData.length > 0;
 
-    const undo = () => {
-        const previousEdit = historyEdit.pop();
-        if (previousEdit) {
-            console.log(previousEdit);
-            setClassData(previousEdit);
-        }
-
-    };
-    const save = () => { };
-    const del = () => { };
-    console.log(`The value is : ${historyEdit}`);
     return (
         <Container fluid className={`${classes.tableContainer} py-4 rounded-5`}>
             {isLoading && <Spinner />}
+            {!isLoading && !error && <DataTable />}
+            {error && <p >There was an error</p>}
 
-            {!isLoading && (
-                <>
-                    <Toolbar undo={undo} disableUndo={historyEdit.length === 0} />
-                    <h2 className="mb-2">{props.selectedClass}</h2>
-                    <div className={classes.scrollContainer}>
-                        <Table borderless className={`${classes.table} mb-0 table-primary`}>
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Name</th>
-                                    <th>Surname</th>
-                                    <th>Birth Date</th>
-                                </tr>
-                            </thead>
-                        </Table>
-                        <div className={classes.scrollTableBody}>
-                            <Table className={`${classes.table} mb-0 table-light`}>
-                                <tbody>
-                                    {isDataPresent ? (
-                                        classData.map((student, index) => (
-                                            <TableRow key={index} student={student} index={index} />
-                                        ))
-                                    ) : null}
-                                </tbody>
-                            </Table>
-                        </div>
-                        <Table borderless className={`${classes.table} table-primary `}>
-                            <tfoot>
-                                <InputTableRow handleSubmission={handleSubmission} />
-                            </tfoot>
-                        </Table>
-                    </div>
-                </>
-            )}
         </Container>
     );
-
-
-
 };
 
 export default Classes;

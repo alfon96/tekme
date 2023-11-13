@@ -9,7 +9,7 @@
 }
 
 .toggleBtn:hover {
-  transform: scale(1.05);
+  transform: scale(1.15);
 }
 
 .collapsed {
@@ -22,7 +22,7 @@
   flex-direction: column;
   gap: 1rem;
   height: 100vh;
-  background-color: var(--bs-light);
+  background-color: #faf2f275;
   padding-left: 13px;
   padding-right: 13px;
   max-width: 300px !important;
@@ -37,14 +37,17 @@ $animation-speed: 0.5s;
 
 @keyframes rotateLeft {
   0% {
-    transform: rotateZ(0deg);
+    transform: rotateZ(0deg) scale(1);
   }
   50% {
-    transform: rotateZ(215deg);
+    transform: rotateZ(215deg) scale(1.5);
+  }
+  80% {
+    transform: rotateZ(165deg) scale(1.1);
   }
 
   100% {
-    transform: rotateZ(180deg);
+    transform: rotateZ(180deg) scale(1);
   }
 }
 
@@ -57,7 +60,10 @@ $animation-speed: 0.5s;
     transform: rotateZ(180deg);
   }
   50% {
-    transform: rotateZ(-35deg);
+    transform: rotateZ(-35deg) scale(1.5);
+  }
+  80% {
+    transform: rotateZ(25deg) scale(1.1);
   }
   100% {
     transform: rotateZ(0deg);

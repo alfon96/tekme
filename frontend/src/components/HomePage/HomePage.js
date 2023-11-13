@@ -6,23 +6,30 @@ import Button from 'react-bootstrap/Button';
 import React, { useState } from 'react';
 import Sidebar from '../Sidebar/Sidebar'
 import Classes from '../Classes/Classes';
+import { useDispatch, useSelector } from 'react-redux';
+import { resetError, setDataTitle } from '../../store/editingSlice';
+import { Toast, ToastContainer } from 'react-bootstrap';
+import Badge from 'react-bootstrap/Badge';
 
 const HomePage = () => {
-    const [selectedClass, setSelectedClass] = useState('');
+    const dataTitle = useSelector((state) => state.editing.dataTitle);
+    const tableError = useSelector((state) => state.editing.error);
+    console.log("dataTitle:", dataTitle); // Aggiungi questo log per debug
 
+    const dispatch = useDispatch();
     return <>
         <CustomNavbar />
-        <Container fluid className={`${classes.bgImage} m-0 p-0 d-flex gap-0`}>
+        <Container fluid className={`${classes.bgImage} m-0 p-0 d-flex gap-0  position-relative`}>
             <Sidebar >
                 <Accordion defaultActiveKey="0">
                     <Accordion.Item eventKey="0">
                         <Accordion.Header>Section A</Accordion.Header>
                         <Accordion.Body className="text-center">
-                            <Button className="m-1" onClick={() => { setSelectedClass('1A') }}>1A</Button>
-                            <Button className="m-1" onClick={() => { setSelectedClass('2A') }}>2A</Button>
-                            <Button className="m-1" onClick={() => { setSelectedClass('3A') }}>3A</Button>
-                            <Button className="m-1" onClick={() => { setSelectedClass('4A') }}>4A</Button>
-                            <Button className="m-1" onClick={() => { setSelectedClass('5A') }}>5A</Button>
+                            <Button className="m-1" onClick={() => { dispatch(setDataTitle('1A')) }}>1A</Button>
+                            <Button className="m-1" onClick={() => { dispatch(setDataTitle('2A')) }}>2A</Button>
+                            <Button className="m-1" onClick={() => { dispatch(setDataTitle('3A')) }}>3A</Button>
+                            <Button className="m-1" onClick={() => { dispatch(setDataTitle('4A')) }}>4A</Button>
+                            <Button className="m-1" onClick={() => { dispatch(setDataTitle('5A')) }}>5A</Button>
                         </Accordion.Body>
                     </Accordion.Item>
                     <Accordion.Item eventKey="1">
@@ -40,13 +47,24 @@ const HomePage = () => {
                 </Accordion>
             </Sidebar>
 
-            <div className="px-5 flex-grow-1">
-                <p className='pt-6'>Widgets</p>
+            <div className="px-5 flex-grow-1 position-relative">
+                <div className='pt-6'></div>
 
-                {selectedClass != '' && <Classes selectedClass={selectedClass}></Classes>}
+                {dataTitle != '' && <Classes></Classes>}
+                <ToastContainer position="bottom-end" className="m-2 ">
+                    <Toast show={tableError} onClose={() => dispatch(resetError())} delay={3500} autohide >
+                        <Toast.Header>
+                            <strong className="me-2">Checker</strong>  <Badge pill bg="secondary me-auto">Warning</Badge>
 
+                        </Toast.Header>
+                        <Toast.Body>{tableError}</Toast.Body>
+                    </Toast>
+                </ToastContainer>
             </div>
+
+
         </Container>
+
     </>
 }
 

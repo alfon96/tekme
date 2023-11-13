@@ -12,7 +12,6 @@ const validationSchema = Yup.object().shape({
     surname: Yup.string().required('Surname is required'),
     dateOfBirth: Yup.date()
         .transform((value, originalValue) => {
-            // Se la stringa è vuota, restituisci null per evitare "Invalid Date"
             return originalValue === '' ? null : new Date(originalValue);
         })
         .max(new Date(), 'Date of birth cannot be in the future')
@@ -39,6 +38,7 @@ export const useFormValidation = (initialState) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        console.log(value);
         setFormState((prev) => ({ ...prev, [name]: value }));
 
         // Se il campo è stato già toccato, valida al cambiamento

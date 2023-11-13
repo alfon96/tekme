@@ -1,0 +1,28 @@
+.scrollContainer {
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+th:last-child {
+  width: 5rem;
+}
+th:first-child {
+  padding-left: 0.5rem;
+}
+
+.scrollTableBody {
+  max-height: 410px;
+  overflow-y: auto;
+  display: block;
+}
+
+.scrollTableBody table {
+  table-layout: fixed;
+  border-collapse: collapse;
+  width: 100%;
+}

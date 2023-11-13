@@ -3,6 +3,7 @@ import storage from 'redux-persist/lib/storage';
 import { persistReducer, persistStore } from 'redux-persist';
 import userReducer from './userSlice';
 import { encryptTransform } from 'redux-persist-transform-encrypt';
+import editingSlice from './editingSlice';
 
 const secretKey = process.env.REACT_APP_SECRET_KEY;
 
@@ -24,7 +25,7 @@ const persistConfig = {
 const persistedReducer = persistReducer(persistConfig, userReducer);
 
 export const store = configureStore({
-    reducer: persistedReducer, // Pass the persistedReducer directly
+    reducer: { auth: persistedReducer, editing: editingSlice },
 });
 
 export const persistor = persistStore(store);

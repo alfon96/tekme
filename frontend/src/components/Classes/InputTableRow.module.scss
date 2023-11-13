@@ -1,0 +1,19 @@
+$size-button: 12px;
+
+.cursorPointer {
+  cursor: pointer;
+  border-radius: 50%;
+  width: $size-button;
+  height: $size-button;
+}
+
+.submitBtn {
+  border: 0;
+  background-color: transparent;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
