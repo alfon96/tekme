@@ -14,7 +14,6 @@ import Badge from 'react-bootstrap/Badge';
 const HomePage = () => {
     const dataTitle = useSelector((state) => state.editing.dataTitle);
     const tableError = useSelector((state) => state.editing.error);
-    console.log("dataTitle:", dataTitle); // Aggiungi questo log per debug
 
     const dispatch = useDispatch();
     return <>

@@ -27,7 +27,6 @@ const FetchPageCalendar = (props) => {
     const [monthYear, setMonthYear] = useState(defaultMonthYear());
 
     const uri = `http://localhost:8000/teachers/Spopovic/${monthYear}`;
-    console.log(uri); // Now this will log every time the component renders
 
     const applyData = (fetchedData) => {
         // Save dadta coming from the http request handled by the custom hook

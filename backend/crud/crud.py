@@ -89,6 +89,30 @@ def get_class_by_name(class_name: str, db: pymongo.database.Database):
         raise e
 
 
+def add_student_to_class(class_entry: schemas.Class, db: pymongo.database.Database):
+    """
+    Fetch a class by name.
+    """
+    try:
+        collection = db["Classes"]
+
+        # Eliminate the id if exists
+        if class_entry.student.id is not None:
+            del class_entry.student.id
+
+        student = dict(class_entry)
+        student["birth_date"] = datetime.combine(
+            class_entry.birth_date, datetime.min.time()
+        )
+
+        insert_result = collection.insert_one(student)
+        inserted_id = str(insert_result.inserted_id)  # Converti l'ID in una stringa
+
+        return inserted_id
+    except Exception as e:
+        raise e
+
+
 def get_user_by_email(role: str, email: str, db: pymongo.database.Database):
     """
     Fetch a user by email from a role-specific collection.

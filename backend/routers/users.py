@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Header
 from typing import Optional
-from schemas.schemas import SignUpModel, SignInModel
+from schemas import schemas
 from crud import crud
 from pymongo.database import Database
 from utils import encryption
@@ -26,7 +26,7 @@ async def verify_token(authorization: str = Header(...)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-async def signup(user_details: SignUpModel, db: Database = Depends(get_db)):
+async def signup(user_details: schemas.SignUpModel, db: Database = Depends(get_db)):
     try:
         # Cripta la password
         hashed_password = encryption.encrypt_password(user_details.password)
@@ -57,7 +57,9 @@ async def signup(user_details: SignUpModel, db: Database = Depends(get_db)):
 
 
 @users.post("/signin")
-async def signin(credentials: SignInModel, role: str, db: Database = Depends(get_db)):
+async def signin(
+    credentials: schemas.SignInModel, role: str, db: Database = Depends(get_db)
+):
     # Cerca l'utente
     user = crud.get_user_by_email(role, credentials.email, db)
     if not user:
@@ -83,6 +85,28 @@ async def get_class(
             raise HTTPException(status_code=404, detail="No data found for this class")
 
         return {**class_data, "_id": str(class_data["_id"])}
+
+    # except SomeMongoDBException as e:
+    #     raise HTTPException(status_code=500, detail="Database error")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@users.post("/classes/{class_name}")
+async def add_to_class(
+    class_name: str,
+    student_data: schemas.StudentData,
+    _: str = Depends(verify_token),
+    db: Database = Depends(get_db),
+):
+    try:
+        class_data = crud.get_class_by_name(class_name, db)
+        if not class_data:
+            raise HTTPException(status_code=404, detail="No data found for this class")
+
+        else:
+            class_entry = schemas.ClassModel(name=class_name, student=student_data)
+            return crud.add_student_to_class(class_entry, db)
 
     # except SomeMongoDBException as e:
     #     raise HTTPException(status_code=500, detail="Database error")
