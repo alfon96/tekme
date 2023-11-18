@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from routers.teachers import teachers
 from routers.users import users
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -31,5 +30,4 @@ def read_root():
     return {"Hello": "World"}
 
 
-app.include_router(teachers)
 app.include_router(users)

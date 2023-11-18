@@ -2,129 +2,156 @@ from schemas import schemas
 from bson import ObjectId, json_util
 from typing import Union
 import pymongo
+from schemas import schemas
 from datetime import datetime
+from fastapi import HTTPException
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 
-def save_kid_log(
-    kid_log: schemas.KidLog, db: pymongo.database.Database
-) -> Union[ObjectId, bool]:
-    try:
-        collection = db.get_collection("Kids")
-        result = collection.insert_one(kid_log.model_dump())
-        return str(result.inserted_id)
-    except Exception as e:
-        print(e)
-        return False
-
-
-def get_kid_log_in_month(
-    kid_name: str, month: int, year: int, db: pymongo.database.Database
+async def create_document(
+    document_data: dict,
+    collection: str,
+    db: AsyncIOMotorDatabase,
 ):
+    """Create a document inside a collection."""
     try:
-        collection = db.get_collection("Kids")
-
-        next_month = month + 1
-        query_year = year
-
-        if month == 12:
-            next_month = 1
-            query_year += 1
-
-        search_query = {
-            "name": kid_name,
-            "date": {
-                "$gte": datetime(query_year, month, 1),
-                "$lt": datetime(query_year, next_month, 1),
-            },
-        }
-
-        results = collection.find(search_query).sort("date", pymongo.ASCENDING)
-
-        return [{**document, "_id": str(document["_id"])} for document in results]
-
+        result = await db[collection].insert_one(document_data)
+        return result.inserted_id
     except Exception as e:
-        print(e)
-        return False
+        raise Exception(f"An error occurred while inserting the student: {e}")
 
 
-def get_collection(role: str, db: pymongo.database.Database):
+async def create_user(
+    collection: str,
+    user_data: dict,
+    db: AsyncIOMotorDatabase,
+):
     """
-    Fetch a collection based on the user's role.
-
-    :param role: The role of the user (e.g., 'Student', 'Teacher', 'Parent', 'Administrator').
-    :return: The collection associated with the role.
-    """
-    # Verifica che il ruolo sia uno di quelli supportati
-    valid_roles = ["Students", "Teachers", "Parents", "Administrator"]
-    if role not in valid_roles:
-        raise ValueError(f"Invalid role: {role}")
-
-    return db[role]
-
-
-def create_user(role: str, user_data: dict, db: pymongo.database.Database):
-    """
-    Create a new user in a role-specific collection.
-    """
-    collection = get_collection(role, db)
-    return collection.insert_one(user_data)
-
-
-def get_user_by_phone(role: str, phone: str, db: pymongo.database.Database):
-    """
-    Fetch a user by email from a role-specific collection.
-    """
-    collection = get_collection(role, db)
-    return collection.find_one({"phone": phone})
-
-
-def get_class_by_name(class_name: str, db: pymongo.database.Database):
-    """
-    Fetch a class by name.
+    Create a new user in the right collection.
     """
     try:
-        collection = db["Classes"]
-        return collection.find_one({"name": class_name})
+        new_user = await db[collection].insert_one(user_data)
+        return new_user.inserted_id
     except Exception as e:
         raise e
 
 
-def add_student_to_class(class_entry: schemas.Class, db: pymongo.database.Database):
+async def read_user(
+    collection: str, user_id: str, db: AsyncIOMotorDatabase, sensitive_data=False
+):
     """
-    Fetch a class by name.
+    Create a new user in the right collection.
     """
     try:
-        collection = db["Classes"]
+        query = {"_id": ObjectId(user_id)}
+        if not sensitive_data:
+            query.update({"password": 0, "phone": 0, "email": 0})
 
-        # Eliminate the id if exists
-        if class_entry.student.id is not None:
-            del class_entry.student.id
+        user_data = await db[collection].find_one(query)
+        if not user_data:
+            raise ValueError(f"The id {user_id} does not correspond to any user!")
 
-        student = dict(class_entry)
-        student["birth_date"] = datetime.combine(
-            class_entry.birth_date, datetime.min.time()
-        )
-
-        insert_result = collection.insert_one(student)
-        inserted_id = str(insert_result.inserted_id)  # Converti l'ID in una stringa
-
-        return inserted_id
+        return user_data
     except Exception as e:
         raise e
 
 
-def get_user_by_email(role: str, email: str, db: pymongo.database.Database):
+async def update_document(
+    collection: str,
+    document_id: str,
+    update_data: dict,
+    db: AsyncIOMotorDatabase,
+):
+    """
+    Update an existing user in the right collection.
+    """
+    try:
+        search_query = {"_id": ObjectId(document_id)}
+        update_query = {"$set": update_data}
+
+        result = await db[collection].update_one(search_query, update_query)
+
+        return result.modified_count
+
+    except Exception as e:
+        raise e
+
+
+async def delete_document(
+    collection: str,
+    document_id: str,
+    db: AsyncIOMotorDatabase,
+):
+    """
+    Create a new user in the right collection.
+    """
+    try:
+        query = {"_id": ObjectId(document_id)}
+        deleted = await db[collection].delete_one(query)
+        if deleted.deleted_count > 0:
+            return deleted.acknowledged
+        else:
+            raise HTTPException(
+                status_code=500, detail="Deletion NOT performed, server error."
+            )
+    except Exception as e:
+        raise e
+
+
+def get_user_by_phone(
+    collection: str,
+    phone: str,
+    db: AsyncIOMotorDatabase,
+):
+    """
+    Fetch a user by email from a given collection.
+    """
+    try:
+        user_data = db[collection].find_one({"phone": phone})
+        return user_data
+    except Exception as e:
+        raise e
+
+
+async def get_user_by_email(
+    collection: str,
+    email: str,
+    db: AsyncIOMotorDatabase,
+):
     """
     Fetch a user by email from a role-specific collection.
     """
-    collection = get_collection(role, db)
-    return collection.find_one({"email": email})
+    try:
+        user_data = await db[collection].find_one({"email": email})
+        return user_data
+    except Exception as e:
+        raise e
 
 
-def delete_user_by_id(role: str, user_id: str, db: pymongo.database.Database):
+def delete_user_by_id(
+    collection: str,
+    user_id: str,
+    db: AsyncIOMotorDatabase,
+):
     """
     Delete a user by ID from a role-specific collection.
     """
-    collection = get_collection(role, db)
-    result = collection.delete_one({"_id": user_id})
+    result = db[collection].delete_one({"_id": user_id})
     return result.deleted_count > 0
+
+
+def get_class_by_name(
+    class_name: str,
+    class_grade: int,
+    db: AsyncIOMotorDatabase,
+):
+    """
+    Fetch a class by name.
+    """
+    try:
+        class_data = db[schemas.CLASSES_COLLECTION].find_one(
+            {"name": class_name, "grade": class_grade}
+        )
+        return class_data
+    except Exception as e:
+        raise e

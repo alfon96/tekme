@@ -1,24 +1,21 @@
-import pymongo
+import motor.motor_asyncio
 from decouple import config
-from enum import Enum
 
 
-def get_db() -> pymongo.database.Database:
-    # Replace these values with your MongoDB connection details
+async def get_db():
     username = config("USERNAME_MONGO_DB")
     password = config("PASSWORD_MONGO_DB")
     db_name = config("DB_NAME")
     mongo_url = f"mongodb+srv://{username}:{password}@cluster0.cmttqde.mongodb.net/?retryWrites=true&w=majority"
 
-    # Initialize the MongoClient
-    client = pymongo.MongoClient(mongo_url)
+    # Initialize the AsyncIOMotorClient
+    client = motor.motor_asyncio.AsyncIOMotorClient(mongo_url)
 
     # Access the database
-    db = client.get_database(db_name)
+    db = client[db_name]
 
     try:
         yield db
-    except Exception as e:
-        print(str(e))
     finally:
-        db.client.close()
+        # Close the connection (optional, as motor handles connection pooling)
+        client.close()
