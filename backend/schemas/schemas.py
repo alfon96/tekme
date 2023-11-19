@@ -9,30 +9,21 @@ from enum import Enum
 
 
 class Data(Enum):
-    CLASS = "classes"
-    SCORE = "scores"
+    CLASS = config("CLASSES_COLLECTION")
+    SCORE = config("SCORES_COLLECTION")
 
 
 class User(str, Enum):
-    STUDENT = "students"
-    TEACHER = "teachers"
-    RELATIVE = "relatives"
-
-
-collection_mapping = {
-    User.STUDENT: config("STUDENTS_COLLECTION"),
-    User.TEACHER: config("TEACHERS_COLLECTION"),
-    User.RELATIVE: config("RELATIVES_COLLECTION"),
-    Data.CLASS: config("CLASSES_COLLECTION"),
-    Data.SCORE: config("SCORES_COLLECTION"),
-}
+    STUDENT = config("STUDENTS_COLLECTION")
+    TEACHER = config("TEACHERS_COLLECTION")
+    RELATIVE = config("RELATIVES_COLLECTION")
 
 
 def check_keys_in_schema(schema: BaseModel, data: dict) -> bool:
     schema_keys = set(schema.__fields__.keys())
     for key in data.keys():
         if key not in schema_keys:
-            return False
+            raise ValueError("The input keys do not match with the Schema!")
     return True
 
 
@@ -48,6 +39,15 @@ class PyObjectId(ObjectId):
         if not ObjectId.is_valid(v):
             raise ValueError("Invalid ObjectId")
         return ObjectId(v)
+
+    @classmethod
+    def __get_pydantic_json_schema__(cls, *args, **kwargs):
+        # In Pydantic v2, you must return the modified schema
+        return {
+            "type": "string",
+            "format": "uuid",
+            "description": "MongoDB ObjectId as a string",
+        }
 
 
 def validate_phone_number(number: str) -> str:
@@ -184,8 +184,8 @@ class StudentBase(BaseModel):
     surname: str
     birthday: datetime
     details: list[str]
-    relatives_id: list[PyObjectId]
-    teachers_id: list[PyObjectId]
+    relatives_id: list[str]
+    teachers_id: list[str]
     profile_pic: Optional[str] = None
 
 
@@ -207,7 +207,7 @@ class RelativeBase(BaseModel):
     name: str
     surname: str
     birthday: datetime
-    children_id: list[PyObjectId]
+    children_id: list[str]
     profile_pic: Optional[str] = None
 
 
@@ -225,25 +225,27 @@ class RelativeSensitiveData(RelativeBase):
 class ScoreBase(BaseModel):
     """Schema representing a score."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     classes: int
     breaks: int
     date: datetime
-    details: list[str]
-    teachers_id: PyObjectId
+    details: Optional[list[str]] = []
+    teachers_id: str
+
+
+class ScoreWithId(ScoreBase):
+    id: PyObjectId = Field(default_factory=None, alias="_id")
 
 
 # Class schema
 class ClassBase(BaseModel):
     """Schema representing a class."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     name: str
     grade: int
-    students_id: list[PyObjectId]
-    teachers_id: list[PyObjectId]
-    details: list[str]
-    type: list[str]
+    students_id: Optional[list[str]] = []
+    teachers_id: Optional[list[str]] = []
+    details: Optional[list[str]] = []
+    type: Optional[list[str]] = []
 
     @validator("grade", pre=True)
     def validate_grade(cls, v):
@@ -255,9 +257,12 @@ class ClassBase(BaseModel):
     @validator("name", pre=True)
     def validate_name(cls, v):
         """Validates that the class name starts with a capital letter and contains only alphabetic characters."""
-        # ... existing logic ...
         if not re.match(r"^[A-Z][a-zA-Z]*$", v):
             raise ValueError(
                 "Name must start with a capital letter and contain only alphabetic characters"
             )
         return v
+
+
+class ClassWithId(ClassBase):
+    id: PyObjectId = Field(default_factory=None, alias="_id")
