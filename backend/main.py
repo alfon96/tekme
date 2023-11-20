@@ -32,12 +32,13 @@ def create_app():
     return app
 
 
+# debugpy.listen(("0.0.0.0", 5678))
+# print("⏳ VS Code debugger can now attach, press F5 in VS Code ⏳", flush=True)
+# debugpy.wait_for_client()
 app = create_app()
-
 
 if __name__ == "__main__":
     debugpy.listen(("0.0.0.0", 5678))
     print("⏳ VS Code debugger can now attach, press F5 in VS Code ⏳", flush=True)
     debugpy.wait_for_client()
-
     app = create_app()

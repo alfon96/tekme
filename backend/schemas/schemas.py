@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from bson import ObjectId
-from typing import List, Optional
+from typing import List, Optional, Union
 from datetime import datetime
 import phonenumbers
 import re
@@ -110,11 +110,11 @@ class Signin(BaseModel):
     email: EmailStr
     password: str
 
-    @validator("role", pre=True)
+    @field_validator("role")
     def validate_user_role(cls, role):
         return validate_user_role(role)
 
-    @validator("password", pre=True)
+    @field_validator("password")
     def validate_password(cls, password):
         return validate_password(password)
 
@@ -130,25 +130,20 @@ class Signup(BaseModel):
     password: str
     phone: str
     profile_pic: Optional[str] = None
-    role: str
 
-    @validator("name", pre=True)
+    @field_validator("name")
     def validate_name(cls, name):
         return validate_non_empty_string(name)
 
-    @validator("surname", pre=True)
+    @field_validator("surname")
     def validate_name(cls, surname):
         return validate_non_empty_string(surname)
 
-    @validator("password", pre=True)
+    @field_validator("password")
     def validate_password(cls, password):
         return validate_password(password)
 
-    @validator("role", pre=True)
-    def validate_user_role(cls, role):
-        return validate_user_role(role)
-
-    @validator("phone", pre=True)
+    @field_validator("phone")
     def validate_phone_number(cls, phone):
         return validate_phone_number(phone)
 
@@ -157,12 +152,12 @@ class Signup(BaseModel):
 class TeacherBase(BaseModel):
     """Represents a basic schema for a teacher."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: Union[str, PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     name: str
     surname: str
     birthday: datetime
-    subjects: list[str]
     profile_pic: Optional[str] = None
+    subjects: list[str]
 
 
 class TeacherSensitiveData(TeacherBase):
@@ -172,14 +167,16 @@ class TeacherSensitiveData(TeacherBase):
     password: str
     phone: str
 
-    _validate_phone = validator("phone", allow_reuse=True)(validate_phone_number)
+    @field_validator("phone")
+    def validate_phone_number(cls, phone):
+        return validate_phone_number(phone)
 
 
 # Student schema
 class StudentBase(BaseModel):
     """Represents a basic schema for a student."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: Union[str, PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     name: str
     surname: str
     birthday: datetime
@@ -196,14 +193,16 @@ class StudentSensitiveData(StudentBase):
     password: str
     phone: str
 
-    _validate_phone = validator("phone", allow_reuse=True)(validate_phone_number)
+    @field_validator("phone")
+    def validate_phone_number(cls, phone):
+        return validate_phone_number(phone)
 
 
 # Relative schema
 class RelativeBase(BaseModel):
     """Represents a basic schema for a relative."""
 
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: Union[str, PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     name: str
     surname: str
     birthday: datetime
@@ -218,7 +217,9 @@ class RelativeSensitiveData(RelativeBase):
     password: str
     phone: str
 
-    _validate_phone = validator("phone", allow_reuse=True)(validate_phone_number)
+    @field_validator("phone")
+    def validate_phone_number(cls, phone):
+        return validate_phone_number(phone)
 
 
 # Score schema
@@ -233,7 +234,7 @@ class ScoreBase(BaseModel):
 
 
 class ScoreWithId(ScoreBase):
-    id: PyObjectId = Field(default_factory=None, alias="_id")
+    id: Union[str, PyObjectId] = Field(default_factory=None, alias="_id")
 
 
 # Class schema
@@ -247,14 +248,14 @@ class ClassBase(BaseModel):
     details: Optional[list[str]] = []
     type: Optional[list[str]] = []
 
-    @validator("grade", pre=True)
+    @field_validator("grade")
     def validate_grade(cls, v):
         """Ensures grade is within an acceptable range."""
         if not 1 <= v <= 12:
             raise ValueError("Grade must be between 1 and 12")
         return v
 
-    @validator("name", pre=True)
+    @field_validator("name")
     def validate_name(cls, v):
         """Validates that the class name starts with a capital letter and contains only alphabetic characters."""
         if not re.match(r"^[A-Z][a-zA-Z]*$", v):
@@ -265,4 +266,4 @@ class ClassBase(BaseModel):
 
 
 class ClassWithId(ClassBase):
-    id: PyObjectId = Field(default_factory=None, alias="_id")
+    id: Union[str, PyObjectId] = Field(default_factory=None, alias="_id")

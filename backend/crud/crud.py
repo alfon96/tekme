@@ -53,7 +53,10 @@ async def create_n_documents(
 
 @handle_pymongo_exceptions
 async def read_user(
-    collection: str, user_id: str, db: AsyncIOMotorDatabase, sensitive_data=False
+    collection: str,
+    user_id: str,
+    db: AsyncIOMotorDatabase,
+    sensitive_data: bool = False,
 ) -> Union[
     schemas.StudentBase,
     schemas.StudentSensitiveData,
@@ -64,15 +67,33 @@ async def read_user(
 ]:
     """Read a user's data from the specified collection."""
 
-    query = {"_id": ObjectId(user_id)}
-    if not sensitive_data:
-        query.update({"password": 0, "phone": 0, "email": 0})
+    match = {"$match": {"_id": ObjectId(user_id)}}
 
-    user_data = await db[collection].find_one(query)
+    # Rimuovi o modifica i campi specifici
+    modify_fields = {
+        "$set": {
+            "_id": {"$toString": "$_id"},
+            "password": {
+                "$cond": {"if": sensitive_data, "then": "$password", "else": "$$REMOVE"}
+            },
+            "phone": {
+                "$cond": {"if": sensitive_data, "then": "$phone", "else": "$$REMOVE"}
+            },
+            "email": {
+                "$cond": {"if": sensitive_data, "then": "$email", "else": "$$REMOVE"}
+            },
+        }
+    }
+
+    pipeline = [match, modify_fields]
+
+    cursor = db[collection].aggregate(pipeline)
+    user_data = await cursor.to_list(length=1)
+
     if not user_data:
-        raise ValueError(f"The id {user_id} does not correspond to any user!")
+        raise ValueError(f"The id '{user_id}' does not correspond to any user!")
 
-    return user_data
+    return user_data[0]
 
 
 @handle_pymongo_exceptions

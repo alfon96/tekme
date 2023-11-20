@@ -3,7 +3,7 @@ import jwt
 from datetime import datetime, timedelta
 from decouple import config
 from utils.setup import Setup
-from fastapi import HTTPException, Header
+from fastapi import HTTPException, Request
 
 
 JWT_SECRET = config("JWT_SECRET")
@@ -52,15 +52,31 @@ def check_token(token: str):
         return False
 
 
-async def read_token(authorization: str = Header(...)) -> dict:
-    if authorization is None or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401, detail="Invalid or missing authorization header"
-        )
+async def read_token_from_header(request: Request) -> dict:
+    authorization: str = request.headers.get("Authorization")
 
-    # Extract token from the authorization header
+    if authorization is None:
+        raise HTTPException(status_code=422, detail="Missing 'Authorization' header")
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid 'Authorization' header")
+
     token = authorization.split(" ")[1]
 
+    if not check_token(token):
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    try:
+        # Decode the token
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+async def read_token(token: str) -> dict:
     if not check_token(token):
         raise HTTPException(status_code=401, detail="Invalid token")
 

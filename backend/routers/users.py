@@ -16,6 +16,7 @@ users = APIRouter(prefix="/users", tags=["Users"])
 @users.post("/signup")
 @handle_mongodb_exceptions
 async def signup(
+    user_role: str,
     user_data: schemas.Signup,
     subjects: Optional[list[str]] = [],
     details: Optional[list[str]] = [],
@@ -27,7 +28,6 @@ async def signup(
     hashed_password = encryption.encrypt_password(user_data.password)
     user_data.password = hashed_password
 
-    user_role = user_data.role
     new_user = {**user_data.dict()}
 
     # Teachers must have field value when they register
@@ -41,10 +41,10 @@ async def signup(
         new_user["details"] = details
 
     # Query the dB
-    user_id = await crud.create_user(user_data.role, new_user, db)
+    user_id = await crud.create_user(collection=user_role, user_data=new_user, db=db)
 
     # Create a JWT token
-    token = encryption.create_jwt_token(str(user_id), user_data.role)
+    token = encryption.create_jwt_token(str(user_id), user_role)
 
     # Return response
     return {"token": token, "message": "User created successfully"}
@@ -80,7 +80,7 @@ async def signin(
 @users.get("/")
 @handle_mongodb_exceptions
 async def read_user(
-    token_payolad: dict = Depends(encryption.read_token),
+    token_payolad: dict = Depends(encryption.read_token_from_header),
     db: Database = Depends(get_db),
 ) -> Union[schemas.RelativeBase, schemas.StudentBase, schemas.TeacherBase]:
     """Retries a user from database without sensitive information"""
@@ -126,7 +126,7 @@ def check_user_role_schema(user_role: str, update_data: dict):
 @handle_mongodb_exceptions
 async def update_user(
     update_data: dict,
-    token_payload: dict = Depends(encryption.read_token),
+    token_payload: dict = Depends(encryption.read_token_from_header),
     db: Database = Depends(get_db),
 ):
     """Update user data based on the user role."""
@@ -160,7 +160,7 @@ async def update_user(
 @handle_mongodb_exceptions
 async def delete_user(
     password: str,
-    token_payload: dict = Depends(encryption.read_token),
+    token_payload: dict = Depends(encryption.read_token_from_header),
     db: Database = Depends(get_db),
 ):
     """Delete a user after verifying their password."""

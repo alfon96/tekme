@@ -1,21 +1,21 @@
 import motor.motor_asyncio
 from decouple import config
+from fastapi import Request
 
 
-async def get_db():
-    username = config("USERNAME_MONGO_DB")
-    password = config("PASSWORD_MONGO_DB")
-    db_name = config("DB_NAME")
-    mongo_url = f"mongodb+srv://{username}:{password}@cluster0.cmttqde.mongodb.net/?retryWrites=true&w=majority"
+async def get_db(request: Request = None):
+    # Determines which database to use based on request
+    if request and request.headers.get("X-Test-Env"):
+        db_name = config("TEST_DB_NAME")
+        mongo_url = config("MONGO_DB_TEST_URI")
+    else:
+        db_name = config("PROD_DB_NAME")
+        mongo_url = config("MONGO_DB_PROD_URI")
 
-    # Initialize the AsyncIOMotorClient
+    # Connessione al database
     client = motor.motor_asyncio.AsyncIOMotorClient(mongo_url)
-
-    # Access the database
     db = client[db_name]
-
     try:
         yield db
     finally:
-        # Close the connection (optional, as motor handles connection pooling)
         client.close()
