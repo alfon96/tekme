@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from decouple import config
 from utils.setup import Setup
 from fastapi import HTTPException, Request
-
+from schemas import schemas
 
 JWT_SECRET = config("JWT_SECRET")
 JWT_ALGORITHM = config("JWT_ALGORITHM")
@@ -76,7 +76,7 @@ async def read_token_from_header(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-async def read_token(token: str) -> dict:
+def read_token(token: str) -> dict:
     if not check_token(token):
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -88,3 +88,10 @@ async def read_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+def check_admin(token):
+    token_payload: dict = read_token(token)
+    if token_payload["role"] != schemas.User.ADMIN.value:
+        return False
+    return True

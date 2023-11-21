@@ -64,6 +64,7 @@ async def read_user(
     schemas.TeacherSensitiveData,
     schemas.RelativeBase,
     schemas.RelativeSensitiveData,
+    None,
 ]:
     """Read a user's data from the specified collection."""
 
@@ -89,17 +90,13 @@ async def read_user(
 
     cursor = db[collection].aggregate(pipeline)
     user_data = await cursor.to_list(length=1)
-
-    if not user_data:
-        raise ValueError(f"The id '{user_id}' does not correspond to any user!")
-
-    return user_data[0]
+    return user_data[0] if user_data else None
 
 
 @handle_pymongo_exceptions
 async def read_n_documents(
     collection: str, search_query: dict, db: AsyncIOMotorDatabase, multi: bool = False
-) -> list[Union[schemas.ClassWithId, schemas.ClassBase]]:
+) -> Union[schemas.ClassBase, list[schemas.ClassBase]]:
     """
     Create a new user in the right collection.
     """
@@ -113,7 +110,8 @@ async def read_n_documents(
         return await cursor.to_list(length=None)
     else:
         cursor = db[collection].aggregate(pipeline)
-        return await cursor.to_list(length=1)
+        data = await cursor.to_list(length=1)
+        return data[0]
 
 
 @handle_pymongo_exceptions
@@ -130,11 +128,10 @@ async def update_n_documents(
 
     update_query = {"$set": update_data}
     if multi:
-        result = await db[collection].update_many(search_query, update_query)
+        return await db[collection].update_many(search_query, update_query)
     else:
-        result = await db[collection].update_one(search_query, update_query)
+        return await db[collection].update_one(search_query, update_query)
 
-    return result.modified_count
 
 
 @handle_pymongo_exceptions
@@ -145,14 +142,10 @@ async def delete_n_documents(
     Create a new user in the right collection.
     """
 
-    deleted = None
     if multi:
-        deleted = await db[collection].delete_many(search_query)
+        return await db[collection].delete_many(search_query)
     else:
-        deleted = await db[collection].delete_one(search_query)
-
-    if not deleted:
-        raise HTTPException(status_code=410, detail="Deletion NOT performed")
+        return await db[collection].delete_one(search_query)
 
 
 @handle_pymongo_exceptions
@@ -173,4 +166,25 @@ async def get_user_by_email(
     """
 
     user_data = await db[collection].find_one({"email": email})
+    return user_data
+
+
+@handle_pymongo_exceptions
+async def get_user_by_email(
+    collection: str,
+    user_id: str,
+    db: AsyncIOMotorDatabase,
+) -> Union[
+    schemas.StudentBase,
+    schemas.StudentSensitiveData,
+    schemas.TeacherBase,
+    schemas.TeacherSensitiveData,
+    schemas.RelativeBase,
+    schemas.RelativeSensitiveData,
+]:
+    """
+    Fetch a user by email from a role-specific collection.
+    """
+    _id = ObjectId(user_id)
+    user_data = await db[collection].find_one({"_id": _id})
     return user_data

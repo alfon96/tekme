@@ -14,6 +14,7 @@ class Data(Enum):
 
 
 class User(str, Enum):
+    ADMIN = config("ADMIN_COLLECTION")
     STUDENT = config("STUDENTS_COLLECTION")
     TEACHER = config("TEACHERS_COLLECTION")
     RELATIVE = config("RELATIVES_COLLECTION")
@@ -23,31 +24,8 @@ def check_keys_in_schema(schema: BaseModel, data: dict) -> bool:
     schema_keys = set(schema.__fields__.keys())
     for key in data.keys():
         if key not in schema_keys:
-            raise ValueError("The input keys do not match with the Schema!")
+            return False
     return True
-
-
-class PyObjectId(ObjectId):
-    """Custom field type for handling MongoDB ObjectId in Pydantic models."""
-
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v, values, **kwargs):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid ObjectId")
-        return ObjectId(v)
-
-    @classmethod
-    def __get_pydantic_json_schema__(cls, *args, **kwargs):
-        # In Pydantic v2, you must return the modified schema
-        return {
-            "type": "string",
-            "format": "uuid",
-            "description": "MongoDB ObjectId as a string",
-        }
 
 
 def validate_phone_number(number: str) -> str:
@@ -148,11 +126,45 @@ class Signup(BaseModel):
         return validate_phone_number(phone)
 
 
+# Admin schema
+class AdminBase(BaseModel):
+    """Represents a basic schema for a student."""
+
+    id: Union[str, None] = Field(default_factory=str, alias="_id")
+    name: str
+    surname: str
+    birthday: datetime
+    profile_pic: Optional[str] = None
+
+
+class AdminSensitiveData(AdminBase):
+    """Schema for student sign-in, inheriting from StudentBase."""
+
+    email: EmailStr
+    password: str
+    phone: str
+
+    @field_validator("phone")
+    def validate_phone_number(cls, phone):
+        return validate_phone_number(phone)
+
+
+class AdminUpdateData(AdminBase):
+    """Schema for student sign-in, inheriting from StudentBase."""
+
+    email: EmailStr
+    phone: str
+
+    @field_validator("phone")
+    def validate_phone_number(cls, phone):
+        return validate_phone_number(phone)
+
+
 # Teacher schema
 class TeacherBase(BaseModel):
     """Represents a basic schema for a teacher."""
 
-    id: Union[str, PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    id: Union[str, None] = Field(default_factory=str, alias="_id")
     name: str
     surname: str
     birthday: datetime
@@ -172,17 +184,28 @@ class TeacherSensitiveData(TeacherBase):
         return validate_phone_number(phone)
 
 
+class TeacherUpdateData(AdminBase):
+    """Schema for student sign-in, inheriting from StudentBase."""
+
+    email: EmailStr
+    phone: str
+
+    @field_validator("phone")
+    def validate_phone_number(cls, phone):
+        return validate_phone_number(phone)
+
+
 # Student schema
 class StudentBase(BaseModel):
     """Represents a basic schema for a student."""
 
-    id: Union[str, PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    id: Union[str, None] = Field(default_factory=str, alias="_id")
     name: str
     surname: str
     birthday: datetime
-    details: list[str]
-    relatives_id: list[str]
-    teachers_id: list[str]
+    details: list[str] = []
+    relatives_id: list[str] = []
+    teachers_id: list[str] = []
     profile_pic: Optional[str] = None
 
 
@@ -198,15 +221,26 @@ class StudentSensitiveData(StudentBase):
         return validate_phone_number(phone)
 
 
+class StudentUpdateData(AdminBase):
+    """Schema for student sign-in, inheriting from StudentBase."""
+
+    email: EmailStr
+    phone: str
+
+    @field_validator("phone")
+    def validate_phone_number(cls, phone):
+        return validate_phone_number(phone)
+
+
 # Relative schema
 class RelativeBase(BaseModel):
     """Represents a basic schema for a relative."""
 
-    id: Union[str, PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    id: str = Field(default_factory=str, alias="_id")
     name: str
     surname: str
     birthday: datetime
-    children_id: list[str]
+    children_id: list[str] = []
     profile_pic: Optional[str] = None
 
 
@@ -222,10 +256,22 @@ class RelativeSensitiveData(RelativeBase):
         return validate_phone_number(phone)
 
 
+class RelativeUpdateData(AdminBase):
+    """Schema for student sign-in, inheriting from StudentBase."""
+
+    email: EmailStr
+    phone: str
+
+    @field_validator("phone")
+    def validate_phone_number(cls, phone):
+        return validate_phone_number(phone)
+
+
 # Score schema
 class ScoreBase(BaseModel):
     """Schema representing a score."""
 
+    id: Union[str, None] = Field(default_factory=str, alias="_id")
     classes: int
     breaks: int
     date: datetime
@@ -233,14 +279,11 @@ class ScoreBase(BaseModel):
     teachers_id: str
 
 
-class ScoreWithId(ScoreBase):
-    id: Union[str, PyObjectId] = Field(default_factory=None, alias="_id")
-
-
 # Class schema
 class ClassBase(BaseModel):
     """Schema representing a class."""
 
+    id: Union[str, None] = Field(default_factory=str, alias="_id")
     name: str
     grade: int
     students_id: Optional[list[str]] = []
@@ -265,5 +308,16 @@ class ClassBase(BaseModel):
         return v
 
 
-class ClassWithId(ClassBase):
-    id: Union[str, PyObjectId] = Field(default_factory=None, alias="_id")
+role_schema_map = {
+    User.ADMIN: AdminSensitiveData,
+    User.TEACHER: TeacherSensitiveData,
+    User.STUDENT: StudentSensitiveData,
+    User.RELATIVE: RelativeSensitiveData,
+}
+
+role_schema_update_map = {
+    User.ADMIN: AdminUpdateData,
+    User.TEACHER: TeacherUpdateData,
+    User.STUDENT: StudentUpdateData,
+    User.RELATIVE: RelativeUpdateData,
+}
