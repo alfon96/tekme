@@ -6,6 +6,8 @@ import phonenumbers
 import re
 from decouple import config
 from enum import Enum
+from utils import encryption
+from fastapi import HTTPException
 
 
 class Data(Enum):
@@ -18,14 +20,6 @@ class User(str, Enum):
     STUDENT = config("STUDENTS_COLLECTION")
     TEACHER = config("TEACHERS_COLLECTION")
     RELATIVE = config("RELATIVES_COLLECTION")
-
-
-def check_keys_in_schema(schema: BaseModel, data: dict) -> bool:
-    schema_keys = set(schema.__fields__.keys())
-    for key in data.keys():
-        if key not in schema_keys:
-            return False
-    return True
 
 
 def validate_phone_number(number: str) -> str:
@@ -96,6 +90,9 @@ class Signin(BaseModel):
     def validate_password(cls, password):
         return validate_password(password)
 
+    class Config:
+        extra = "forbid"
+
 
 # SignUpModel
 class Signup(BaseModel):
@@ -125,6 +122,9 @@ class Signup(BaseModel):
     def validate_phone_number(cls, phone):
         return validate_phone_number(phone)
 
+    class Config:
+        extra = "forbid"
+
 
 # Admin schema
 class AdminBase(BaseModel):
@@ -135,6 +135,9 @@ class AdminBase(BaseModel):
     surname: str
     birthday: datetime
     profile_pic: Optional[str] = None
+
+    class Config:
+        extra = "forbid"
 
 
 class AdminSensitiveData(AdminBase):
@@ -170,6 +173,9 @@ class TeacherBase(BaseModel):
     birthday: datetime
     profile_pic: Optional[str] = None
     subjects: list[str]
+
+    class Config:
+        extra = "forbid"
 
 
 class TeacherSensitiveData(TeacherBase):
@@ -208,6 +214,9 @@ class StudentBase(BaseModel):
     teachers_id: list[str] = []
     profile_pic: Optional[str] = None
 
+    class Config:
+        extra = "forbid"
+
 
 class StudentSensitiveData(StudentBase):
     """Schema for student sign-in, inheriting from StudentBase."""
@@ -242,6 +251,9 @@ class RelativeBase(BaseModel):
     birthday: datetime
     children_id: list[str] = []
     profile_pic: Optional[str] = None
+
+    class Config:
+        extra = "forbid"
 
 
 class RelativeSensitiveData(RelativeBase):
@@ -278,18 +290,24 @@ class ScoreBase(BaseModel):
     details: Optional[list[str]] = []
     teachers_id: str
 
+    class Config:
+        extra = "forbid"
+
 
 # Class schema
 class ClassBase(BaseModel):
     """Schema representing a class."""
 
-    id: Union[str, None] = Field(default_factory=str, alias="_id")
+    id: Optional[str] = Field(default_factory=str, alias="_id")
     name: str
     grade: int
     students_id: Optional[list[str]] = []
     teachers_id: Optional[list[str]] = []
     details: Optional[list[str]] = []
     type: Optional[list[str]] = []
+
+    class Config:
+        extra = "forbid"
 
     @field_validator("grade")
     def validate_grade(cls, v):
@@ -321,3 +339,43 @@ role_schema_update_map = {
     User.STUDENT: StudentUpdateData,
     User.RELATIVE: RelativeUpdateData,
 }
+
+
+def check_keys_in_schema(schema: BaseModel, data: dict) -> bool:
+    schema_keys = set(schema.__fields__.keys())
+    for key in data.keys():
+        if key not in schema_keys:
+            return False
+    return True
+
+
+def check_not_null_values(data: dict) -> bool:
+    for key in data.keys():
+        if data[key] == None or data[key] == "":
+            return False
+    return True
+
+
+def check_input_query(input_query: dict, schema: BaseModel) -> str:
+    """Check input queries."""
+    # Check keys correctness
+    if not check_keys_in_schema(
+        schema=schema,
+        data=input_query,
+    ):
+        return "The provided keys do not match the Schema!"
+
+    # Check non empty values
+    if not check_not_null_values(data=input_query):
+        return "Input dictionary can't contain null values"
+
+    return ""
+
+
+def check_admin(token: str) -> str:
+    """Checks token belongs to admin and input_query correctness"""
+
+    if not encryption.check_admin(token):
+        return "Only Admins can create classes"
+
+    return ""

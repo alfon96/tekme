@@ -9,7 +9,8 @@ from pymongo import errors as pymongo_errors
 from utils.setup import Setup
 import json
 from utils.decorators import handle_mongodb_exceptions
-from routers.users import oauth2_scheme
+from routers.users import read_token_from_header, read_token_admin_only
+from pydantic import BaseModel
 
 classes = APIRouter(prefix="/classes", tags=["Classes"])
 
@@ -19,11 +20,9 @@ classes = APIRouter(prefix="/classes", tags=["Classes"])
 async def create_n_classes(
     classes: Union[schemas.ClassBase, list[schemas.ClassBase]],
     db: Database = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(read_token_admin_only),
 ):
     """Create one or multiple class records. Accepts either a single class object or a list of class objects."""
-    if not encryption.check_admin(token):
-        raise HTTPException(status_code=401, detail="Only Admins can create classes")
 
     # Check if it is multi
     multi = isinstance(classes, list)
@@ -61,20 +60,23 @@ async def create_n_classes(
 @classes.get("/")
 @handle_mongodb_exceptions
 async def read_n_classes(
-    name: Optional[str] = None,
-    grade: Optional[int] = None,
+    name: str,
+    grade: int,
     multi: bool = False,
     db: Database = Depends(get_db),
-    _: str = Depends(oauth2_scheme),
+    _: str = Depends(read_token_from_header),
 ):
     """Read one or multiple class records. Accepts optional parameters name and/or grade, otherwise will return any document."""
 
-    # Create search query
-    search_query = {}
-    if name:
-        search_query.update({"name": name})
-    if grade:
-        search_query.update({"grade": grade})
+    search_query = {"name": name, "grade": grade}
+
+    # Query should respect schemas and not have null values
+    notValidQuery = schemas.check_input_query(
+        input_query=search_query, schema=schemas.ClassBase
+    )
+    if notValidQuery:
+        raise HTTPException(status_code=422, detail=notValidQuery)
+
     # Send Query To dB
     results = await crud.read_n_documents(
         collection=schemas.Data.CLASS.value,
@@ -83,11 +85,12 @@ async def read_n_classes(
         multi=multi,
     )
     # Handle responseif not data:
-    if not results:
+    if len(results) == 0:
         raise HTTPException(status_code=404, detail="Content NOT found")
 
     # Prepare response
     response = {"results": results}
+
     # Send Response
     return response
 
@@ -99,13 +102,26 @@ async def update_n_classes(
     update_data: dict,
     multi: bool = False,
     db: Database = Depends(get_db),
-    _: str = Depends(oauth2_scheme),
+    _: str = Depends(read_token_from_header),
 ):
-    # Validate queries keys
-    schemas.check_keys_in_schema(schemas.ClassWithId, search_query)
-    schemas.check_keys_in_schema(schemas.ClassWithId, update_data)
+    # Validate queries
+
+    # Query should respect schemas and not have null values
+    notValidQuery = schemas.check_input_query(
+        input_query=search_query, schema=schemas.ClassBase
+    )
+    if notValidQuery:
+        raise HTTPException(status_code=422, detail=notValidQuery)
+
+    # Query should respect schemas and not have null values
+    notValidQuery = schemas.check_input_query(
+        input_query=update_data, schema=schemas.ClassBase
+    )
+    if notValidQuery:
+        raise HTTPException(status_code=422, detail=notValidQuery)
+
     # Query the dB
-    updated_count = await crud.update_n_documents(
+    result = await crud.update_n_documents(
         collection=schemas.Data.CLASS.value,
         search_query=search_query,
         update_data=update_data,
@@ -113,29 +129,41 @@ async def update_n_classes(
         multi=multi,
     )
     # Handle results
-    if updated_count < 1:
-        HTTPException(status_code=410, detail="Update was NOT successful")
+    # No match
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Cannot find the document to update. Check the find query",
+        )
+    # No change
+    if not result.modified_count > 0:
+        raise HTTPException(status_code=400, detail="Fields have NOT been modified.")
+
     # Send response
-    return {"message": "Updated was successful", "count": updated_count}
+    return {"message": "Updated was successful", "count": result.modified_count}
 
 
 @classes.delete("/")
 @handle_mongodb_exceptions
 async def delete_n_classes(
-    deletion_keys: dict,
+    delete_query: dict,
     multi: bool = False,
     db: Database = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(read_token_admin_only),
 ):
-    if not encryption.check_admin(token):
-        raise HTTPException(status_code=401, detail="Only Admins can create classes")
-    # Validates the keys given in the schema, only goes forward if the keys are valid
-    schemas.check_keys_in_schema(schemas.ClassWithId, deletion_keys)
+    # Query should respect schemas and not have null values
+    notValidQuery = schemas.check_input_query(
+        input_query=delete_query, schema=schemas.ClassBase
+    )
+    if notValidQuery:
+        raise HTTPException(status_code=422, detail=notValidQuery)
 
+    # Query the dB
     collection = schemas.Data.CLASS.value
 
     await crud.delete_n_documents(
-        collection=collection, search_query=deletion_keys, db=db, multi=multi
+        collection=collection, search_query=delete_query, db=db, multi=multi
     )
 
-    return HTTPException(status_code=200, detail=f"Deletion acknowledged")
+    # Return response
+    return {"message": "Deletion acknowledged"}

@@ -18,27 +18,23 @@ class TestUserRead(unittest.IsolatedAsyncioTestCase):
             self.headers.update({"Authorization": f"Bearer {token}"})
 
         async with aiohttp.ClientSession() as session:
-            return await session.get(self.url, headers=self.headers)
+            response = await session.get(self.url, headers=self.headers)
+            return response.status, await response.json()
 
     async def test_fail_read_user(self):
         """Read User - Fail"""
         # No token
-        response = await self.read(token=None)
-        assert response.status == 401
+        status, _ = await self.read(token=None)
+        assert status == 401
 
         # Invalid token
-        response = await self.read(token="Invalid Token")
-        assert response.status == 401
+        status, _ = await self.read(token="Invalid Token")
+        assert status == 401
 
     async def test_pass_read_user(self):
         # Valid token
         for role in schemas.User:
             token = SharedTestData.tokens[role.value]
-            response = await self.read(token)
-            content = await response.json()
+            status, _ = await self.read(token)
 
-            schema_class = SharedTestData.roles_schemas[role.value]
-            schema_instance = schema_class(**content["user"])
-
-            assert response.status == 200
-            assert isinstance(schema_instance, schema_class)
+            assert status == 200

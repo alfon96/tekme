@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import Optional, Union
+from typing import Optional, Union, Annotated
 from schemas import schemas
 from crud import crud
 from pymongo.database import Database
@@ -13,6 +13,18 @@ from fastapi.security import OAuth2PasswordBearer
 
 users = APIRouter(prefix="/users", tags=["Users"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/signin")
+
+
+def read_token_from_header(token: Annotated[str, Depends(oauth2_scheme)]):
+    return encryption.read_token(token)
+
+
+def read_token_admin_only(token: Annotated[str, Depends(oauth2_scheme)]):
+    payload = encryption.read_token(token)
+    if payload[f"{Setup.role}"] == schemas.User.ADMIN.value:
+        return payload
+    else:
+        raise HTTPException(status_code=401, detail="Only Admins can do this action")
 
 
 @users.post("/signup")
@@ -83,11 +95,18 @@ async def signin(
 @handle_mongodb_exceptions
 async def read_user(
     db: Database = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
-) -> dict[str, Union[schemas.TeacherBase, schemas.StudentBase, schemas.RelativeBase]]:
+    token_payload: dict = Depends(read_token_from_header),
+) -> dict[
+    str,
+    Union[
+        schemas.AdminBase,
+        schemas.TeacherBase,
+        schemas.StudentBase,
+        schemas.RelativeBase,
+    ],
+]:
     """Retries a user from database without sensitive information"""
 
-    token_payload = encryption.read_token(token)
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
 
@@ -139,11 +158,10 @@ async def update_user_password(
     old_password: str,
     new_password: str,
     db: Database = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    token_payload: dict = Depends(read_token_from_header),
 ) -> dict:
-    payload = encryption.read_token(token)
-    role = payload[f"{Setup.role}"]
-    user_id = payload[f"{Setup.id}"]
+    role = token_payload[f"{Setup.role}"]
+    user_id = token_payload[f"{Setup.id}"]
 
     user_data = await crud.get_user_by_email(
         collection=role,
@@ -174,11 +192,10 @@ async def update_user_password(
 async def update_user(
     update_data: dict,
     db: Database = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    token_payload: dict = Depends(read_token_from_header),
 ) -> dict:
     """Update user data based on the user role."""
     # Extract user ID and role from the token payload
-    token_payload = encryption.read_token(token)
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
 
@@ -187,7 +204,12 @@ async def update_user(
         user_role, update_data, role_schema_map=schemas.role_schema_update_map
     ):
         raise HTTPException(
-            status_code=422, detail="The input keys do not match with the Schema!"
+            status_code=422, detail="The input keys do not match the Schema!"
+        )
+
+    if not schemas.check_not_null_values(update_data):
+        raise HTTPException(
+            status_code=422, detail="Input dictionary can't contain null values"
         )
 
     # Prepare the search query
@@ -214,11 +236,10 @@ async def update_user(
 async def delete_user(
     password: str,
     db: Database = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    token_payload: dict = Depends(read_token_from_header),
 ):
     """Delete a user after verifying their password."""
     # Extract user ID and role from the token payload
-    token_payload = encryption.read_token(token)
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
 

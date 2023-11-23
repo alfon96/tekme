@@ -32,6 +32,7 @@ class SharedTestData:
         schemas.User.STUDENT.value: schemas.StudentBase,
         schemas.User.RELATIVE.value: schemas.RelativeBase,
     }
+    classes_id: str = ""
 
 
 if __name__ == "__main__":
@@ -57,13 +58,25 @@ if __name__ == "__main__":
     user_create = loader.loadTestsFromName(
         "test.test_users.test_create_users.TestUserCreate"
     )
+    # Create
     classes_create = loader.loadTestsFromName(
         "test.test_classes.test_create_classes.TestClassesCreate"
     )
+    # Read
+    classes_read = loader.loadTestsFromName(
+        "test.test_classes.test_read_classes.TestClassesRead"
+    )
 
-    classes_crud = unittest.TestSuite([user_create, classes_create])
+    # Delete
+    classes_delete = loader.loadTestsFromName(
+        "test.test_classes.test_delete_classes.TestClassesDelete"
+    )
 
-    # # Run the combined suite
+    classes_crud = unittest.TestSuite(
+        [user_create, classes_create, classes_read, classes_delete]
+    )
+
+    # Run the combined suite
     runner = unittest.TextTestRunner()
     runner.run(users_crud)
 

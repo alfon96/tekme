@@ -110,8 +110,7 @@ async def read_n_documents(
         return await cursor.to_list(length=None)
     else:
         cursor = db[collection].aggregate(pipeline)
-        data = await cursor.to_list(length=1)
-        return data[0]
+        return await cursor.to_list(length=1)
 
 
 @handle_pymongo_exceptions
@@ -131,7 +130,6 @@ async def update_n_documents(
         return await db[collection].update_many(search_query, update_query)
     else:
         return await db[collection].update_one(search_query, update_query)
-
 
 
 @handle_pymongo_exceptions
