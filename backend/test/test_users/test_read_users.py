@@ -35,6 +35,11 @@ class TestUserRead(unittest.IsolatedAsyncioTestCase):
         # Valid token
         for role in schemas.User:
             token = SharedTestData.tokens[role.value]
-            status, _ = await self.read(token)
 
+            status, json = await self.read(token)
+            user_data = json
+            schema = SharedTestData.roles_schemas[role]
+            obj = schema(**user_data)
+
+            assert isinstance(obj, schema)
             assert status == 200

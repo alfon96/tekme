@@ -19,7 +19,6 @@ class TestClassesRead(unittest.IsolatedAsyncioTestCase):
             "name": "A",
             "grade": 1,
         }
-        self.valid_query_id: str = SharedTestData
         self.invalid_queries = [
             {
                 "invalid_" + key: value if key == k else self.valid_query[k]

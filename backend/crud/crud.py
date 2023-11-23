@@ -8,33 +8,9 @@ from fastapi import HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 
-def handle_pymongo_exceptions(func):
-    async def wrapper(*args, **kwargs):
-        try:
-            return await func(*args, **kwargs)
-        except pymongo.errors.PyMongoError as e:
-            raise HTTPException(status_code=500, detail=f"Database error: {e}")
-        except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"An unexpected error occurred: {e}"
-            )
-
-    return wrapper
+# BASIC CRUD OPERATIONS
 
 
-@handle_pymongo_exceptions
-async def create_user(
-    collection: str,
-    user_data: dict,
-    db: AsyncIOMotorDatabase,
-) -> ObjectId:
-    """Create a new user in the specified collection."""
-
-    new_user = await db[collection].insert_one(user_data)
-    return new_user.inserted_id
-
-
-@handle_pymongo_exceptions
 async def create_n_documents(
     document_data: Union[dict, list],
     collection: str,
@@ -47,73 +23,75 @@ async def create_n_documents(
         result = await db[collection].insert_many(document_data)
         return result.inserted_ids
     else:
-        result = await db[collection].insert_one(document_data)
+        try:
+            result = await db[collection].insert_one(document_data)
+        except Exception as e:
+            print(e)
         return result.inserted_id
 
 
-@handle_pymongo_exceptions
-async def read_user(
+async def read_n_documents(
     collection: str,
-    user_id: str,
     db: AsyncIOMotorDatabase,
+    user_id: str = None,
+    search_query: dict = None,
     sensitive_data: bool = False,
-) -> Union[
-    schemas.StudentBase,
-    schemas.StudentSensitiveData,
-    schemas.TeacherBase,
-    schemas.TeacherSensitiveData,
-    schemas.RelativeBase,
-    schemas.RelativeSensitiveData,
-    None,
-]:
-    """Read a user's data from the specified collection."""
+    multi: bool = False,
+) -> Union[dict, list]:
+    """
+    Read one or multiple documents from the specified collection.
+    Can be used to read a specific user or perform a general query.
+    """
 
-    match = {"$match": {"_id": ObjectId(user_id)}}
-
-    # Rimuovi o modifica i campi specifici
-    modify_fields = {
-        "$set": {
-            "_id": {"$toString": "$_id"},
-            "password": {
-                "$cond": {"if": sensitive_data, "then": "$password", "else": "$$REMOVE"}
-            },
-            "phone": {
-                "$cond": {"if": sensitive_data, "then": "$phone", "else": "$$REMOVE"}
-            },
-            "email": {
-                "$cond": {"if": sensitive_data, "then": "$email", "else": "$$REMOVE"}
-            },
-        }
+    # Determine the match condition based on user_id or search_query
+    set_condition = {
+        "id": {"$toString": "$_id"},
     }
 
-    pipeline = [match, modify_fields]
-
-    cursor = db[collection].aggregate(pipeline)
-    user_data = await cursor.to_list(length=1)
-    return user_data[0] if user_data else None
-
-
-@handle_pymongo_exceptions
-async def read_n_documents(
-    collection: str, search_query: dict, db: AsyncIOMotorDatabase, multi: bool = False
-) -> Union[schemas.ClassBase, list[schemas.ClassBase]]:
-    """
-    Create a new user in the right collection.
-    """
+    if user_id:
+        match_condition = {"_id": ObjectId(user_id)}
+        set_condition.update(
+            {
+                "password": {
+                    "$cond": {
+                        "if": sensitive_data,
+                        "then": "$password",
+                        "else": "$$REMOVE",
+                    }
+                },
+                "phone": {
+                    "$cond": {
+                        "if": sensitive_data,
+                        "then": "$phone",
+                        "else": "$$REMOVE",
+                    }
+                },
+                "email": {
+                    "$cond": {
+                        "if": sensitive_data,
+                        "then": "$email",
+                        "else": "$$REMOVE",
+                    }
+                },
+            }
+        )
+    else:
+        match_condition = search_query or {}
 
     pipeline = [
-        {"$match": search_query},
-        {"$addFields": {"_id": {"$toString": "$_id"}}},
+        {"$match": match_condition},
+        {"$set": set_condition},
+        {"$project": {"_id": 0}},  # Rimuovi solo il campo '_id' originale
     ]
+
+    cursor = db[collection].aggregate(pipeline)
     if multi:
-        cursor = db[collection].aggregate(pipeline)
         return await cursor.to_list(length=None)
     else:
-        cursor = db[collection].aggregate(pipeline)
-        return await cursor.to_list(length=1)
+        documents = await cursor.to_list(length=1)
+        return documents[0] if documents else None
 
 
-@handle_pymongo_exceptions
 async def update_n_documents(
     collection: str,
     search_query: dict,
@@ -132,7 +110,6 @@ async def update_n_documents(
         return await db[collection].update_one(search_query, update_query)
 
 
-@handle_pymongo_exceptions
 async def delete_n_documents(
     collection: str, search_query: dict, db: AsyncIOMotorDatabase, multi: bool = False
 ) -> None:
@@ -144,45 +121,3 @@ async def delete_n_documents(
         return await db[collection].delete_many(search_query)
     else:
         return await db[collection].delete_one(search_query)
-
-
-@handle_pymongo_exceptions
-async def get_user_by_email(
-    collection: str,
-    email: str,
-    db: AsyncIOMotorDatabase,
-) -> Union[
-    schemas.StudentBase,
-    schemas.StudentSensitiveData,
-    schemas.TeacherBase,
-    schemas.TeacherSensitiveData,
-    schemas.RelativeBase,
-    schemas.RelativeSensitiveData,
-]:
-    """
-    Fetch a user by email from a role-specific collection.
-    """
-
-    user_data = await db[collection].find_one({"email": email})
-    return user_data
-
-
-@handle_pymongo_exceptions
-async def get_user_by_email(
-    collection: str,
-    user_id: str,
-    db: AsyncIOMotorDatabase,
-) -> Union[
-    schemas.StudentBase,
-    schemas.StudentSensitiveData,
-    schemas.TeacherBase,
-    schemas.TeacherSensitiveData,
-    schemas.RelativeBase,
-    schemas.RelativeSensitiveData,
-]:
-    """
-    Fetch a user by email from a role-specific collection.
-    """
-    _id = ObjectId(user_id)
-    user_data = await db[collection].find_one({"_id": _id})
-    return user_data

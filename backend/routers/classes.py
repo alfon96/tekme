@@ -43,12 +43,12 @@ async def create_n_classes(
     # Prepare Response
     if multi:
         response = [
-            {"_id": str(id_), "name": class_.name, "grade": class_.grade}
+            {f"{Setup.id}": str(id_), "name": class_.name, "grade": class_.grade}
             for class_, id_ in zip(classes, inserted_ids)
         ]
     else:
         response = {
-            "_id": str(inserted_ids),
+            f"{Setup.id}": str(inserted_ids),
             "name": classes.name,
             "grade": classes.grade,
         }
@@ -98,33 +98,16 @@ async def read_n_classes(
 @classes.patch("/")
 @handle_mongodb_exceptions
 async def update_n_classes(
-    search_query: dict,
-    update_data: dict,
+    update_obj: schemas.ClassUpdate,
     multi: bool = False,
     db: Database = Depends(get_db),
-    _: str = Depends(read_token_from_header),
+    _: str = Depends(read_token_admin_only),
 ):
-    # Validate queries
-
-    # Query should respect schemas and not have null values
-    notValidQuery = schemas.check_input_query(
-        input_query=search_query, schema=schemas.ClassBase
-    )
-    if notValidQuery:
-        raise HTTPException(status_code=422, detail=notValidQuery)
-
-    # Query should respect schemas and not have null values
-    notValidQuery = schemas.check_input_query(
-        input_query=update_data, schema=schemas.ClassBase
-    )
-    if notValidQuery:
-        raise HTTPException(status_code=422, detail=notValidQuery)
-
     # Query the dB
     result = await crud.update_n_documents(
         collection=schemas.Data.CLASS.value,
-        search_query=search_query,
-        update_data=update_data,
+        search_query=update_obj.search_query,
+        update_data=update_obj.values_to_update(),
         db=db,
         multi=multi,
     )

@@ -10,6 +10,7 @@ from utils.setup import Setup
 from bson import ObjectId
 from utils.decorators import handle_mongodb_exceptions
 from fastapi.security import OAuth2PasswordBearer
+import json
 
 users = APIRouter(prefix="/users", tags=["Users"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/signin")
@@ -32,8 +33,6 @@ def read_token_admin_only(token: Annotated[str, Depends(oauth2_scheme)]):
 async def signup(
     user_role: schemas.User,
     user_data: schemas.Signup,
-    subjects: Optional[list[str]] = [],
-    details: Optional[list[str]] = [],
     db: Database = Depends(get_db),
 ):
     """Register a new user. Encrypts the password and adds user-specific data based on their role."""
@@ -42,20 +41,15 @@ async def signup(
     hashed_password = encryption.encrypt_password(user_data.password)
     user_data.password = hashed_password
 
-    new_user = {**user_data.dict()}
-
     # Teachers must have field value when they register
     if user_role == "teachers":
-        if not subjects or len(subjects) == 0:
+        if not user_data.subjects or len(user_data.subjects) == 0:
             raise HTTPException(status_code=422, detail="Missing subject field!")
-        new_user["subjects"] = subjects
-
-    # Student can have empty details
-    elif user_role == "students":
-        new_user["details"] = details
 
     # Query the dB
-    user_id = await crud.create_user(collection=user_role, user_data=new_user, db=db)
+    user_id = await crud.create_n_documents(
+        collection=user_role, document_data=user_data.dict(), db=db
+    )
 
     # Create a JWT token
     token = encryption.create_jwt_token(str(user_id), user_role)
@@ -96,41 +90,28 @@ async def signin(
 async def read_user(
     db: Database = Depends(get_db),
     token_payload: dict = Depends(read_token_from_header),
-) -> dict[
-    str,
-    Union[
-        schemas.AdminBase,
-        schemas.TeacherBase,
-        schemas.StudentBase,
-        schemas.RelativeBase,
-    ],
-]:
+) -> dict:
     """Retries a user from database without sensitive information"""
 
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
 
     # Query the dB
-    user_data = await crud.read_user(
+
+    user_data = await crud.read_n_documents(
         collection=user_role,
         user_id=user_id,
-        db=db,
         sensitive_data=False,
+        db=db,
     )
     if not user_data:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    user_obj = schemas.GenericUser(**user_data)
     # Handle & Return response
-    if user_role == schemas.User.ADMIN.value:
-        return {"user": schemas.AdminBase(**user_data)}
-    elif user_role == schemas.User.TEACHER.value:
-        return {"user": schemas.TeacherBase(**user_data)}
-    elif user_role == schemas.User.STUDENT.value:
-        return {"user": schemas.StudentBase(**user_data)}
-    elif user_role == schemas.User.RELATIVE.value:
-        return {"user": schemas.RelativeBase(**user_data)}
-    else:
-        raise HTTPException(status_code=404, detail="User role not found")
+
+    response = schemas.UserFactory.create_user(user_role, user_obj)
+    return response.dict()
 
 
 def check_user_role_schema(
@@ -245,7 +226,9 @@ async def delete_user(
 
     # Retrieve the user data to verify the password
 
-    user_data = await crud.read_user(user_role, user_id, db, sensitive_data=True)
+    user_data = await crud.read_n_documents(
+        collection=user_role, user_id=user_id, db=db, sensitive_data=True
+    )
 
     if not user_data:
         raise HTTPException(status_code=404, detail="User not found")

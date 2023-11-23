@@ -19,6 +19,8 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
             "password": "testPassword1!",
             "phone": "+393715485996",
             "profile_pic": "",
+            "details": [],
+            "subjects": [],
         }
         self.invalid_user_data = [
             {
@@ -28,8 +30,6 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
             for key in self.valid_user_data
         ]
 
-        self.details = ({"details": []},)
-        self.subjects = ({"subjects": []},)
         self.headers = {"X-Test-Env": "true"}
         self.url = "http://backend:80/users/signup"
 
@@ -46,11 +46,7 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
         """Create User - Fail"""
 
         # A not valid input user_role should return 401
-        json = {
-            "user_data": self.valid_user_data,
-            "details": ["Some details"],
-            "subjects": ["Some Subects"],
-        }
+        json = self.valid_user_data
         status, _ = await self.create(json=json, user_role="Invalid Role")
         assert status == 422
 
@@ -58,8 +54,6 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
         for invalid_user_data in self.invalid_user_data:
             json = {
                 "user_data": invalid_user_data,
-                "details": ["Some details"],
-                "subjects": ["Some Subects"],
             }
             for role in schemas.User:
                 status, _ = await self.create(
@@ -69,11 +63,7 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
                 assert status == 422
 
         # Teachers without subjects field should return 422
-        json = {
-            "user_data": self.valid_user_data,
-            "details": [],
-            "subjects": [],
-        }
+        json = self.valid_user_data
         status, _ = await self.create(
             json=json,
             user_role=schemas.User.TEACHER.value,
@@ -85,12 +75,12 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
 
         # Check for all roles
         for role in schemas.User:
-            subjects = ["Maths"] if role.value == schemas.User.TEACHER.value else []
-            json = {
-                "user_data": self.valid_user_data,
-                "details": ["Some Details"],
-                "subjects": subjects,
-            }
+            if role.value == schemas.User.TEACHER.value:
+                self.valid_user_data["subjects"] = ["Maths"]
+            else:
+                self.valid_user_data["subjects"] = []
+
+            json = self.valid_user_data
 
             status, json = await self.create(
                 json=json,

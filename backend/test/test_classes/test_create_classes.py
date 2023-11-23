@@ -60,15 +60,24 @@ class TestClassesCreate(unittest.IsolatedAsyncioTestCase):
 
     async def test_pass_create_classes(self):
         """Create Classes - Pass"""
-
-        role = schemas.User.ADMIN.value
-        token = SharedTestData.tokens[role]
+        # Create one class
+        token = SharedTestData.tokens[schemas.User.ADMIN.value]
 
         status, json = await self.create(
             token=token,
         )
-        _id = json.get("_id")
+        id = json.get("id")
 
-        assert _id != None
-        SharedTestData.classes_id = _id
+        assert id != None
+        SharedTestData.classes_id = id
+        assert status == 200
+
+        # Create N classes
+        token = SharedTestData.tokens[schemas.User.ADMIN.value]
+        class_data = [self.valid_classes_data for x in range(5)]
+        status, json = await self.create(token=token, class_data=class_data)
+        ids = [item.get("id") for item in json]
+
+        assert len(ids) > 0
+        SharedTestData.classes_id = id
         assert status == 200

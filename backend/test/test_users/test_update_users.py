@@ -41,26 +41,27 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
             self.headers.update({"Authorization": f"Bearer {token}"})
 
         async with aiohttp.ClientSession() as session:
-            return await session.patch(self.url, headers=self.headers, json=json)
+            response = await session.patch(self.url, headers=self.headers, json=json)
+            return response.status, await response.json()
 
     async def test_fail_update_user(self):
         """Update User - Fail"""
         # Invalid Token
-        response = await self.update(
+        status, _ = await self.update(
             token="Invalid Token", json=self.valid_update_single_query
         )
-        assert response.status == 401
+        assert status == 401
 
         # Invalid parameters, correct token but just one key wrong
         for role in schemas.User:
             for invalid_update_query in self.invalid_update_queries:
                 token = SharedTestData.tokens[role.value]
 
-                response = await self.update(
+                status, _ = await self.update(
                     token=token,
                     json=invalid_update_query,
                 )
-                assert response.status == 422
+                assert status == 422
 
     async def test_pass_update_user(self):
         """Update User - Pass"""
@@ -68,15 +69,15 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
         for role in schemas.User:
             token = SharedTestData.tokens[role]
 
-            response = await self.update(
+            status, _ = await self.update(
                 token=token, json=self.valid_update_single_query
             )
 
-            assert response.status == 200
+            assert status == 200
 
         # Multi Values Update
         for role in schemas.User:
-            response = await self.update(
+            status, _ = await self.update(
                 token=SharedTestData.tokens[role], json=self.valid_update_multi_query
             )
-            assert response.status == 200
+            assert status == 200

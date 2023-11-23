@@ -26,5 +26,11 @@ def handle_mongodb_exceptions(func):
 
             # General MongoDB error
             raise HTTPException(status_code=500, detail="A database error occurred.")
+        except Exception as e:
+            # If the exception was handled in the API routes raise it, otherwise raise the standard one
+            if isinstance(e, HTTPException):
+                raise e
+            else:
+                raise HTTPException(status_code=500, detail=str(e))
 
     return wrapper

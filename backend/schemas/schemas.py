@@ -94,17 +94,16 @@ class Signin(BaseModel):
         extra = "forbid"
 
 
-# SignUpModel
-class Signup(BaseModel):
+class GenericUser(BaseModel):
     """Represents a basic schema for whatever user to signup."""
 
+    id: Optional[str] = None
     name: str
     surname: str
     birthday: datetime
-    email: EmailStr
-    password: str
-    phone: str
     profile_pic: Optional[str] = None
+    subjects: Optional[list[str]] = []
+    details: Optional[list[str]] = []
 
     @field_validator("name")
     def validate_name(cls, name):
@@ -114,6 +113,15 @@ class Signup(BaseModel):
     def validate_name(cls, surname):
         return validate_non_empty_string(surname)
 
+    class Config:
+        extra = "forbid"
+
+
+class Signup(GenericUser):
+    email: EmailStr
+    password: str
+    phone: str
+
     @field_validator("password")
     def validate_password(cls, password):
         return validate_password(password)
@@ -122,15 +130,12 @@ class Signup(BaseModel):
     def validate_phone_number(cls, phone):
         return validate_phone_number(phone)
 
-    class Config:
-        extra = "forbid"
-
 
 # Admin schema
 class AdminBase(BaseModel):
     """Represents a basic schema for a student."""
 
-    id: Union[str, None] = Field(default_factory=str, alias="_id")
+    id: Optional[str]
     name: str
     surname: str
     birthday: datetime
@@ -167,7 +172,7 @@ class AdminUpdateData(AdminBase):
 class TeacherBase(BaseModel):
     """Represents a basic schema for a teacher."""
 
-    id: Union[str, None] = Field(default_factory=str, alias="_id")
+    id: Optional[str]
     name: str
     surname: str
     birthday: datetime
@@ -205,7 +210,7 @@ class TeacherUpdateData(AdminBase):
 class StudentBase(BaseModel):
     """Represents a basic schema for a student."""
 
-    id: Union[str, None] = Field(default_factory=str, alias="_id")
+    id: Optional[str]
     name: str
     surname: str
     birthday: datetime
@@ -245,7 +250,7 @@ class StudentUpdateData(AdminBase):
 class RelativeBase(BaseModel):
     """Represents a basic schema for a relative."""
 
-    id: str = Field(default_factory=str, alias="_id")
+    id: Optional[str]
     name: str
     surname: str
     birthday: datetime
@@ -279,11 +284,43 @@ class RelativeUpdateData(AdminBase):
         return validate_phone_number(phone)
 
 
+class UserFactory(BaseModel):
+    """
+    Represents a general user and acts as a factory for specific user types.
+    """
+
+    @staticmethod
+    def create_user(
+        role: str, signup_data: GenericUser
+    ) -> Union[AdminBase, TeacherBase, StudentBase, RelativeBase]:
+        role_to_class = {
+            User.ADMIN.value: AdminBase,
+            User.TEACHER.value: TeacherBase,
+            User.STUDENT.value: StudentBase,
+            User.RELATIVE.value: RelativeBase,
+        }
+
+        target_class = role_to_class.get(role)
+        if not target_class:
+            raise ValueError("Invalid role")
+
+        # Get specific class keys
+        target_fields = target_class.__fields__.keys()
+
+        # Filter out invalid keys for the specific class
+        filtered_data = {
+            k: v for k, v in signup_data.dict().items() if k in target_fields
+        }
+
+        # Create the user object
+        return target_class(**filtered_data)
+
+
 # Score schema
 class ScoreBase(BaseModel):
     """Schema representing a score."""
 
-    id: Union[str, None] = Field(default_factory=str, alias="_id")
+    id: Optional[str]
     classes: int
     breaks: int
     date: datetime
@@ -298,9 +335,9 @@ class ScoreBase(BaseModel):
 class ClassBase(BaseModel):
     """Schema representing a class."""
 
-    id: Optional[str] = Field(default_factory=str, alias="_id")
-    name: str
-    grade: int
+    id: Optional[str] = None
+    name: Optional[str] = ""
+    grade: Optional[int] = ""
     students_id: Optional[list[str]] = []
     teachers_id: Optional[list[str]] = []
     details: Optional[list[str]] = []
@@ -324,6 +361,29 @@ class ClassBase(BaseModel):
                 "Name must start with a capital letter and contain only alphabetic characters"
             )
         return v
+
+
+class ClassUpdate(ClassBase):
+    """Schema for updating a class, with an additional search_query field."""
+
+    search_query: dict
+
+    @field_validator("search_query")
+    def validate_search_query(cls, v, values, **kwargs):
+        base_fields = set(ClassBase.__fields__.keys())
+        for key in v.keys():
+            if key not in base_fields:
+                raise ValueError(
+                    f"Key '{key}' in search_query is not a valid field of ClassBase"
+                )
+        return v
+
+    def values_to_update(self):
+        # Return the object without search_query and filter out None or empty lists
+        class_data = self.dict()
+        class_data.pop("search_query", None)
+
+        return {k: v for k, v in class_data.items() if v is not None and v != []}
 
 
 role_schema_map = {

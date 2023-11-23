@@ -20,23 +20,26 @@ class TestUserDelete(unittest.IsolatedAsyncioTestCase):
         params = self.params if not password else {"password": password}
 
         async with aiohttp.ClientSession() as session:
-            return await session.delete(self.url, headers=self.headers, params=params)
+            response = await session.delete(
+                self.url, headers=self.headers, params=params
+            )
+            return response.status, await response.json()
 
     async def test_fail_delete_user(self):
         """Delete User - Fail"""
         # No token
-        response = await self.delete(token=None)
-        assert response.status == 401
+        status, _ = await self.delete(token=None)
+        assert status == 401
 
         # Invalid token
-        response = await self.delete(token="Invalid Token")
-        assert response.status == 401
+        status, _ = await self.delete(token="Invalid Token")
+        assert status == 401
 
         # Invalid password
         for role in schemas.User:
             token: str = SharedTestData.tokens[role.value]
-            response = await self.delete(token=token, password="Password1!Invalid")
-            assert response.status == 401
+            status, _ = await self.delete(token=token, password="Password1!Invalid")
+            assert status == 401
 
     async def test_pass_delete_user(self):
         """Delete User - Pass"""
@@ -44,5 +47,5 @@ class TestUserDelete(unittest.IsolatedAsyncioTestCase):
         for role in schemas.User:
             token = SharedTestData.tokens[role.value]
             SharedTestData.tokens[role] = {}
-            response = await self.delete(token)
-            assert response.status == 200
+            status, _ = await self.delete(token)
+            assert status == 200

@@ -66,6 +66,10 @@ if __name__ == "__main__":
     classes_read = loader.loadTestsFromName(
         "test.test_classes.test_read_classes.TestClassesRead"
     )
+    # Update
+    classes_update = loader.loadTestsFromName(
+        "test.test_classes.test_update_classes.TestClassesUpdate"
+    )
 
     # Delete
     classes_delete = loader.loadTestsFromName(
@@ -73,12 +77,12 @@ if __name__ == "__main__":
     )
 
     classes_crud = unittest.TestSuite(
-        [user_create, classes_create, classes_read, classes_delete]
+        [user_create, classes_create, classes_read, classes_update, classes_delete]
     )
 
     # Run the combined suite
-    runner = unittest.TextTestRunner()
-    runner.run(users_crud)
+    # runner = unittest.TextTestRunner()
+    # runner.run(users_crud)
 
     runner = unittest.TextTestRunner()
     runner.run(classes_crud)
