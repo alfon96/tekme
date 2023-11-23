@@ -3,7 +3,7 @@ import asyncio
 from decouple import config
 import motor.motor_asyncio
 import tracemalloc
-from schemas import schemas
+from schemas import schemas, custom_types
 
 tracemalloc.start()
 
@@ -27,10 +27,10 @@ async def clean_db_before_tests():
 class SharedTestData:
     tokens: dict = {}
     roles_schemas: dict = {
-        schemas.User.ADMIN.value: schemas.AdminBase,
-        schemas.User.TEACHER.value: schemas.TeacherBase,
-        schemas.User.STUDENT.value: schemas.StudentBase,
-        schemas.User.RELATIVE.value: schemas.RelativeBase,
+        custom_types.User.ADMIN.value: schemas.AdminBase,
+        custom_types.User.TEACHER.value: schemas.TeacherBase,
+        custom_types.User.STUDENT.value: schemas.StudentBase,
+        custom_types.User.RELATIVE.value: schemas.RelativeBase,
     }
     classes_id: str = ""
 
@@ -53,7 +53,11 @@ if __name__ == "__main__":
         "test.test_users.test_delete_users.TestUserDelete"
     )
 
-    users_crud = unittest.TestSuite([user_create, user_read, user_update, user_delete])
+    users_crud = unittest.TestSuite(
+        [
+            user_create,
+        ]
+    )
 
     user_create = loader.loadTestsFromName(
         "test.test_users.test_create_users.TestUserCreate"
@@ -81,8 +85,8 @@ if __name__ == "__main__":
     )
 
     # Run the combined suite
-    # runner = unittest.TextTestRunner()
-    # runner.run(users_crud)
-
     runner = unittest.TextTestRunner()
-    runner.run(classes_crud)
+    runner.run(users_crud)
+
+    # runner = unittest.TextTestRunner()
+    # runner.run(classes_crud)

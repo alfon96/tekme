@@ -11,27 +11,28 @@ import json
 from utils.decorators import handle_mongodb_exceptions
 from routers.users import read_token_from_header, read_token_admin_only
 from pydantic import BaseModel
+from datetime import datetime
 
-classes = APIRouter(prefix="/classes", tags=["Classes"])
+scores = APIRouter(prefix="/scores", tags=["Scores"])
 
 
-@classes.post("/")
+@scores.post("/")
 @handle_mongodb_exceptions
-async def create_n_classes(
-    classes: Union[schemas.ClassBase, list[schemas.ClassBase]],
+async def create_n_scores(
+    scores: Union[schemas.ScoreBase, list[schemas.ScoreBase]],
     db: Database = Depends(get_db),
     token: str = Depends(read_token_admin_only),
-):
+) -> Union[dict, list[dict]]:
     """Create one or multiple class records. Accepts either a single class object or a list of class objects."""
 
     # Check if it is multi
-    multi = isinstance(classes, list)
+    multi = isinstance(scores, list)
     # Prepare the documents data
-    document_data = [x.dict() for x in classes] if multi else classes.dict()
+    document_data = [x.dict() for x in scores] if multi else scores.dict()
 
     # Send Query to dB
     inserted_ids = await crud.create_n_documents(
-        collection=schemas.Data.CLASS.value,
+        collection=schemas.Data.SCORE.value,
         document_data=document_data,
         multi=multi,
         db=db,
@@ -43,37 +44,30 @@ async def create_n_classes(
     # Prepare Response
     if multi:
         response = [
-            {**schemas.ClassBase(**{**obj_.dict(), "id": str(id_)}).dict()}
-            for obj_, id_ in zip(classes, inserted_ids)
+            {**schemas.ScoreBase(**{**obj_.dict(), "id": str(id_)}).dict()}
+            for obj_, id_ in zip(scores, inserted_ids)
         ]
     else:
         response = {
-            **schemas.ClassBase(**{**classes.dict(), "id": str(inserted_ids)}).dict()
+            **schemas.ScoreBase(**{**scores.dict(), "id": str(inserted_ids)}).dict()
         }
 
     # Send Response
     return response
 
 
-@classes.get("/")
+@scores.get("/")
 @handle_mongodb_exceptions
-async def read_n_classes(
-    name: str,
-    grade: int,
+async def read_n_scores(
+    encoded_query: str,
     multi: bool = False,
     db: Database = Depends(get_db),
     _: str = Depends(read_token_from_header),
 ):
     """Read one or multiple class records. Accepts optional parameters name and/or grade, otherwise will return any document."""
 
-    search_query = {"name": name, "grade": grade}
-
-    # Query should respect schemas and not have null values
-    notValidQuery = schemas.check_input_query(
-        input_query=search_query, schema=schemas.ClassBase
-    )
-    if notValidQuery:
-        raise HTTPException(status_code=422, detail=notValidQuery)
+    encoded_query = schemas.EncodedQuery(query=encoded_query)
+    search_query = encoded_query.decode()
 
     # Send Query To dB
     results = await crud.read_n_documents(
@@ -93,9 +87,9 @@ async def read_n_classes(
     return response
 
 
-@classes.patch("/")
+@scores.patch("/")
 @handle_mongodb_exceptions
-async def update_n_classes(
+async def update_n_scores(
     update_obj: schemas.ClassUpdate,
     multi: bool = False,
     db: Database = Depends(get_db),
@@ -124,9 +118,9 @@ async def update_n_classes(
     return {"message": "Updated was successful", "count": result.modified_count}
 
 
-@classes.delete("/")
+@scores.delete("/")
 @handle_mongodb_exceptions
-async def delete_n_classes(
+async def delete_n_scores(
     delete_query: dict,
     multi: bool = False,
     db: Database = Depends(get_db),

@@ -1,4 +1,4 @@
-# from schemas import schemas
+# from schemas import schemas , custom_types
 # import pytest
 # import httpx
 # from main import app
@@ -25,7 +25,7 @@
 
 
 # @pytest.mark.asyncio
-# async def pass_signin(role: str = schemas.User.TEACHER.value):
+# async def pass_signin(role: str = custom_types.User.TEACHER.value):
 #     """Pass Authentication."""
 
 #     json = {"email": "test@test.com", "password": "testPassword1!", "role": role}

@@ -1,5 +1,5 @@
 from datetime import datetime
-from schemas import schemas
+from schemas import schemas, custom_types
 import unittest
 import aiohttp
 from datetime import datetime
@@ -44,7 +44,7 @@ class TestClassesRead(unittest.IsolatedAsyncioTestCase):
         assert status == 401
 
         # One field wrong must cause Unprocessasble entity 422
-        for role in schemas.User:
+        for role in custom_types.User:
             token = SharedTestData.tokens[role.value]
             for invalid_query in self.invalid_queries:
                 status, _ = await self.read(
@@ -56,7 +56,7 @@ class TestClassesRead(unittest.IsolatedAsyncioTestCase):
     async def test_pass_read_classes(self):
         """Read Classes - Pass"""
 
-        for role in schemas.User:
+        for role in custom_types.User:
             token = SharedTestData.tokens[role.value]
             status, _ = await self.read(
                 token=token,

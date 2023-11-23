@@ -1,5 +1,5 @@
 from datetime import datetime
-from schemas import schemas
+from schemas import schemas, custom_types
 import unittest
 import aiohttp
 from datetime import datetime
@@ -53,7 +53,7 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
         assert status == 401
 
         # Invalid parameters, correct token but just one key wrong
-        for role in schemas.User:
+        for role in custom_types.User:
             for invalid_update_query in self.invalid_update_queries:
                 token = SharedTestData.tokens[role.value]
 
@@ -66,7 +66,7 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
     async def test_pass_update_user(self):
         """Update User - Pass"""
 
-        for role in schemas.User:
+        for role in custom_types.User:
             token = SharedTestData.tokens[role]
 
             status, _ = await self.update(
@@ -76,7 +76,7 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
             assert status == 200
 
         # Multi Values Update
-        for role in schemas.User:
+        for role in custom_types.User:
             status, _ = await self.update(
                 token=SharedTestData.tokens[role], json=self.valid_update_multi_query
             )

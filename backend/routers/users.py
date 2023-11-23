@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional, Union, Annotated
-from schemas import schemas
+from schemas import schemas, custom_types
 from crud import crud
 from pymongo.database import Database
 from utils import encryption
@@ -22,17 +22,23 @@ def read_token_from_header(token: Annotated[str, Depends(oauth2_scheme)]):
 
 def read_token_admin_only(token: Annotated[str, Depends(oauth2_scheme)]):
     payload = encryption.read_token(token)
-    if payload[f"{Setup.role}"] == schemas.User.ADMIN.value:
+    if payload[f"{Setup.role}"] == custom_types.User.ADMIN.value:
         return payload
     else:
         raise HTTPException(status_code=401, detail="Only Admins can do this action")
 
 
+def user_role_fun(user_role):
+    """This is necessary because fastAPI doesn't let Query Parameters have complex types"""
+    object = schemas.UserRoles(role=user_role)
+    return object.role
+
+
 @users.post("/signup")
 @handle_mongodb_exceptions
 async def signup(
-    user_role: schemas.User,
     user_data: schemas.Signup,
+    user_role: str = Depends(user_role_fun),
     db: Database = Depends(get_db),
 ):
     """Register a new user. Encrypts the password and adds user-specific data based on their role."""
@@ -110,7 +116,7 @@ async def read_user(
     user_obj = schemas.GenericUser(**user_data)
     # Handle & Return response
 
-    response = schemas.UserFactory.create_user(user_role, user_obj)
+    response = custom_types.UserFactory.create_user(user_role, user_obj)
     return response.dict()
 
 
@@ -136,8 +142,8 @@ def check_user_role_schema(
 @users.patch("/change_password")
 @handle_mongodb_exceptions
 async def update_user_password(
-    old_password: str,
-    new_password: str,
+    old_password: custom_types.Password,
+    new_password: custom_types.Password,
     db: Database = Depends(get_db),
     token_payload: dict = Depends(read_token_from_header),
 ) -> dict:

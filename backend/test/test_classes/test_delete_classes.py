@@ -1,5 +1,5 @@
 from datetime import datetime
-from schemas import schemas
+from schemas import schemas, custom_types
 import unittest
 import aiohttp
 from datetime import datetime
@@ -42,14 +42,14 @@ class TestClassesDelete(unittest.IsolatedAsyncioTestCase):
         """Create Classes - Delete"""
 
         # Only admins can delete classes otherwise the api should return 401
-        for role in schemas.User:
+        for role in custom_types.User:
             token = SharedTestData.tokens[role.value]
-            if role.value != schemas.User.ADMIN.value:
+            if role.value != custom_types.User.ADMIN.value:
                 status, _ = await self.delete(token=token)
                 assert status == 401
 
         # One field wrong must cause Unprocessasble entity 422
-        role = schemas.User.ADMIN.value
+        role = custom_types.User.ADMIN.value
         token = SharedTestData.tokens[role]
         for invalid_query in self.invalid_queries:
             status, _ = await self.delete(
@@ -61,7 +61,7 @@ class TestClassesDelete(unittest.IsolatedAsyncioTestCase):
     async def test_pass_delete_classes(self):
         """Create Classes - Pass"""
 
-        role = schemas.User.ADMIN.value
+        role = custom_types.User.ADMIN.value
         token = SharedTestData.tokens[role]
         status, _ = await self.delete(
             token=token,

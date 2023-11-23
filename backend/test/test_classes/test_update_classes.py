@@ -1,5 +1,5 @@
 from datetime import datetime
-from schemas import schemas
+from schemas import schemas, custom_types
 import unittest
 import aiohttp
 from datetime import datetime
@@ -61,14 +61,14 @@ class TestClassesUpdate(unittest.IsolatedAsyncioTestCase):
         status, _ = await self.update(token=token, json=self.valid_query)
         assert status == 401
 
-        for role in schemas.User:
-            if role.value != schemas.User.ADMIN:
+        for role in custom_types.User:
+            if role.value != custom_types.User.ADMIN:
                 token = SharedTestData.tokens[role.value]
                 status, _ = await self.update(token=token, json=self.valid_query)
                 assert status == 401
 
         # One field wrong must cause Unprocessasble entity 422
-        token = SharedTestData.tokens[schemas.User.ADMIN.value]
+        token = SharedTestData.tokens[custom_types.User.ADMIN.value]
         for invalid_query in self.invalid_queries:
             status, _ = await self.update(
                 token=token,
@@ -78,7 +78,7 @@ class TestClassesUpdate(unittest.IsolatedAsyncioTestCase):
             assert status == 422
 
         # One field wrong in the search_query must cause Unprocessasble entity 422
-        token = SharedTestData.tokens[schemas.User.ADMIN.value]
+        token = SharedTestData.tokens[custom_types.User.ADMIN.value]
         for invalid_query in self.invalid_queries:
             invalid_search_query = {**self.valid_query, "search_query": invalid_query}
             status, _ = await self.update(
@@ -91,7 +91,7 @@ class TestClassesUpdate(unittest.IsolatedAsyncioTestCase):
         """Update Classes - Pass"""
 
         "Single Update"
-        token = SharedTestData.tokens[schemas.User.ADMIN.value]
+        token = SharedTestData.tokens[custom_types.User.ADMIN.value]
 
         status, _ = await self.update(token=token, json=self.valid_query)
         assert status == 200

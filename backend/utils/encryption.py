@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from decouple import config
 from utils.setup import Setup
 from fastapi import HTTPException, Request
-from schemas import schemas
+from schemas import schemas, custom_types
 
 JWT_SECRET = config("JWT_SECRET")
 JWT_ALGORITHM = config("JWT_ALGORITHM")
@@ -92,6 +92,6 @@ def read_token(token: str) -> dict:
 
 def check_admin(token):
     token_payload: dict = read_token(token)
-    if token_payload["role"] != schemas.User.ADMIN.value:
+    if token_payload["role"] != custom_types.User.ADMIN.value:
         return False
     return True

@@ -1,5 +1,5 @@
 from datetime import datetime
-from schemas import schemas
+from schemas import schemas, custom_types
 import unittest
 import aiohttp
 from datetime import datetime
@@ -33,7 +33,7 @@ class TestUserRead(unittest.IsolatedAsyncioTestCase):
 
     async def test_pass_read_user(self):
         # Valid token
-        for role in schemas.User:
+        for role in custom_types.User:
             token = SharedTestData.tokens[role.value]
 
             status, json = await self.read(token)

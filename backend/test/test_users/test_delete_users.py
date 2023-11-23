@@ -1,5 +1,5 @@
 from datetime import datetime
-from schemas import schemas
+from schemas import schemas, custom_types
 import unittest
 import aiohttp
 from datetime import datetime
@@ -36,7 +36,7 @@ class TestUserDelete(unittest.IsolatedAsyncioTestCase):
         assert status == 401
 
         # Invalid password
-        for role in schemas.User:
+        for role in custom_types.User:
             token: str = SharedTestData.tokens[role.value]
             status, _ = await self.delete(token=token, password="Password1!Invalid")
             assert status == 401
@@ -44,7 +44,7 @@ class TestUserDelete(unittest.IsolatedAsyncioTestCase):
     async def test_pass_delete_user(self):
         """Delete User - Pass"""
         # Valid token & Valid Passwords
-        for role in schemas.User:
+        for role in custom_types.User:
             token = SharedTestData.tokens[role.value]
             SharedTestData.tokens[role] = {}
             status, _ = await self.delete(token)

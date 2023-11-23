@@ -2,93 +2,31 @@ from pydantic import BaseModel, Field, EmailStr, field_validator
 from bson import ObjectId
 from typing import List, Optional, Union
 from datetime import datetime
-import phonenumbers
 import re
-from decouple import config
-from enum import Enum
 from utils import encryption
 from fastapi import HTTPException
-
-
-class Data(Enum):
-    CLASS = config("CLASSES_COLLECTION")
-    SCORE = config("SCORES_COLLECTION")
-
-
-class User(str, Enum):
-    ADMIN = config("ADMIN_COLLECTION")
-    STUDENT = config("STUDENTS_COLLECTION")
-    TEACHER = config("TEACHERS_COLLECTION")
-    RELATIVE = config("RELATIVES_COLLECTION")
-
-
-def validate_phone_number(number: str) -> str:
-    """Validates that a phone number is internationally formatted and valid."""
-    try:
-        phone_number = phonenumbers.parse(number, None)
-
-        if not (
-            phonenumbers.is_possible_number(phone_number)
-            and phonenumbers.is_valid_number(phone_number)
-        ):
-            raise ValueError("Invalid phone number: not a valid number.")
-
-        return number
-
-    except phonenumbers.NumberParseException:
-        raise ValueError("Invalid phone number: unable to parse.")
-
-
-def validate_password(password: str):
-    uppercase_regex = r"[A-Z]"
-    lowercase_regex = r"[a-z]"
-    special_symbol_regex = r"[!@#$%^&*()_+{}\[\]:;<>,.?~]"
-    digit_regex = r"[0-9]"
-
-    # Check if password contains at least one uppercase letter
-    if not (
-        re.search(uppercase_regex, password)
-        and re.search(lowercase_regex, password)
-        and re.search(special_symbol_regex, password)
-        and re.search(digit_regex, password)
-    ):
-        raise ValueError(
-            "Password must contain at least one uppercase and lowercase letters, one special character, and one number!"
-        )
-
-    return password
-
-
-# user_role validator
-def validate_user_role(role: str):
-    """Validates that the role is one of the allowed options."""
-    if role not in [user.value for user in User]:
-        raise ValueError('Role must be one of "Student", "Teacher", or "Relative".')
-    return role
-
-
-# empty string validator
-def validate_non_empty_string(input: str):
-    if input == "":
-        raise ValueError("This field cannot be empty")
-    return input
+import json
+import urllib.parse
+from schemas.custom_types import (
+    User,
+    Data,
+    UserRole,
+    Password,
+    NameSurname,
+    Phone,
+    Grade,
+    Query,
+)
+from typing import Type
 
 
 # SignInModel
 class Signin(BaseModel):
     """Represents a basic schema for whatever user to signin."""
 
-    role: str
+    role: UserRole
     email: EmailStr
-    password: str
-
-    @field_validator("role")
-    def validate_user_role(cls, role):
-        return validate_user_role(role)
-
-    @field_validator("password")
-    def validate_password(cls, password):
-        return validate_password(password)
+    password: Password
 
     class Config:
         extra = "forbid"
@@ -98,20 +36,12 @@ class GenericUser(BaseModel):
     """Represents a basic schema for whatever user to signup."""
 
     id: Optional[str] = None
-    name: str
-    surname: str
+    name: NameSurname
+    surname: NameSurname
     birthday: datetime
     profile_pic: Optional[str] = None
     subjects: Optional[list[str]] = []
     details: Optional[list[str]] = []
-
-    @field_validator("name")
-    def validate_name(cls, name):
-        return validate_non_empty_string(name)
-
-    @field_validator("surname")
-    def validate_name(cls, surname):
-        return validate_non_empty_string(surname)
 
     class Config:
         extra = "forbid"
@@ -119,16 +49,8 @@ class GenericUser(BaseModel):
 
 class Signup(GenericUser):
     email: EmailStr
-    password: str
-    phone: str
-
-    @field_validator("password")
-    def validate_password(cls, password):
-        return validate_password(password)
-
-    @field_validator("phone")
-    def validate_phone_number(cls, phone):
-        return validate_phone_number(phone)
+    password: Password
+    phone: Phone
 
 
 # Admin schema
@@ -136,8 +58,8 @@ class AdminBase(BaseModel):
     """Represents a basic schema for a student."""
 
     id: Optional[str]
-    name: str
-    surname: str
+    name: NameSurname
+    surname: NameSurname
     birthday: datetime
     profile_pic: Optional[str] = None
 
@@ -149,23 +71,15 @@ class AdminSensitiveData(AdminBase):
     """Schema for student sign-in, inheriting from StudentBase."""
 
     email: EmailStr
-    password: str
-    phone: str
-
-    @field_validator("phone")
-    def validate_phone_number(cls, phone):
-        return validate_phone_number(phone)
+    password: Password
+    phone: Phone
 
 
 class AdminUpdateData(AdminBase):
     """Schema for student sign-in, inheriting from StudentBase."""
 
     email: EmailStr
-    phone: str
-
-    @field_validator("phone")
-    def validate_phone_number(cls, phone):
-        return validate_phone_number(phone)
+    phone: Phone
 
 
 # Teacher schema
@@ -173,8 +87,8 @@ class TeacherBase(BaseModel):
     """Represents a basic schema for a teacher."""
 
     id: Optional[str]
-    name: str
-    surname: str
+    name: NameSurname
+    surname: NameSurname
     birthday: datetime
     profile_pic: Optional[str] = None
     subjects: list[str]
@@ -187,23 +101,15 @@ class TeacherSensitiveData(TeacherBase):
     """Schema for teacher sign-in, inheriting from TeacherBase."""
 
     email: EmailStr
-    password: str
-    phone: str
-
-    @field_validator("phone")
-    def validate_phone_number(cls, phone):
-        return validate_phone_number(phone)
+    password: Password
+    phone: Phone
 
 
 class TeacherUpdateData(AdminBase):
     """Schema for student sign-in, inheriting from StudentBase."""
 
     email: EmailStr
-    phone: str
-
-    @field_validator("phone")
-    def validate_phone_number(cls, phone):
-        return validate_phone_number(phone)
+    phone: Phone
 
 
 # Student schema
@@ -211,8 +117,8 @@ class StudentBase(BaseModel):
     """Represents a basic schema for a student."""
 
     id: Optional[str]
-    name: str
-    surname: str
+    name: NameSurname
+    surname: NameSurname
     birthday: datetime
     details: list[str] = []
     relatives_id: list[str] = []
@@ -227,23 +133,19 @@ class StudentSensitiveData(StudentBase):
     """Schema for student sign-in, inheriting from StudentBase."""
 
     email: EmailStr
-    password: str
-    phone: str
-
-    @field_validator("phone")
-    def validate_phone_number(cls, phone):
-        return validate_phone_number(phone)
+    password: Password
+    phone: Phone
 
 
 class StudentUpdateData(AdminBase):
     """Schema for student sign-in, inheriting from StudentBase."""
 
     email: EmailStr
-    phone: str
+    phone: Phone
 
-    @field_validator("phone")
-    def validate_phone_number(cls, phone):
-        return validate_phone_number(phone)
+
+class UserRoles(BaseModel):
+    role: UserRole
 
 
 # Relative schema
@@ -251,8 +153,8 @@ class RelativeBase(BaseModel):
     """Represents a basic schema for a relative."""
 
     id: Optional[str]
-    name: str
-    surname: str
+    name: NameSurname
+    surname: NameSurname
     birthday: datetime
     children_id: list[str] = []
     profile_pic: Optional[str] = None
@@ -265,23 +167,15 @@ class RelativeSensitiveData(RelativeBase):
     """Schema for relative sign-in, inheriting from RelativeBase."""
 
     email: EmailStr
-    password: str
-    phone: str
-
-    @field_validator("phone")
-    def validate_phone_number(cls, phone):
-        return validate_phone_number(phone)
+    password: Password
+    phone: Phone
 
 
 class RelativeUpdateData(AdminBase):
     """Schema for student sign-in, inheriting from StudentBase."""
 
     email: EmailStr
-    phone: str
-
-    @field_validator("phone")
-    def validate_phone_number(cls, phone):
-        return validate_phone_number(phone)
+    phone: Phone
 
 
 class UserFactory(BaseModel):
@@ -325,10 +219,32 @@ class ScoreBase(BaseModel):
     breaks: int
     date: datetime
     details: Optional[list[str]] = []
-    teachers_id: str
+    teacher_id: str
+    students_id: Union[str, List[str]]
 
     class Config:
         extra = "forbid"
+
+
+class ScoreUpdate(ScoreBase):
+    search_query: Query
+
+    @field_validator("search_query")
+    def validate_search_query(cls, v, values, **kwargs):
+        base_fields = set(ClassBase.__fields__.keys())
+        for key in v.keys():
+            if key not in base_fields:
+                raise ValueError(
+                    f"Key '{key}' in search_query is not a valid field of ClassBase"
+                )
+        return v
+
+    def values_to_update(self):
+        # Return the object without search_query and filter out None or empty lists
+        score_data = self.dict()
+        score_data.pop("search_query", None)
+
+        return {k: v for k, v in score_data.items() if v is not None and v != []}
 
 
 # Class schema
@@ -336,8 +252,8 @@ class ClassBase(BaseModel):
     """Schema representing a class."""
 
     id: Optional[str] = None
-    name: Optional[str] = ""
-    grade: Optional[int] = ""
+    name: NameSurname
+    grade: Grade
     students_id: Optional[list[str]] = []
     teachers_id: Optional[list[str]] = []
     details: Optional[list[str]] = []
@@ -345,22 +261,6 @@ class ClassBase(BaseModel):
 
     class Config:
         extra = "forbid"
-
-    @field_validator("grade")
-    def validate_grade(cls, v):
-        """Ensures grade is within an acceptable range."""
-        if not 1 <= v <= 12:
-            raise ValueError("Grade must be between 1 and 12")
-        return v
-
-    @field_validator("name")
-    def validate_name(cls, v):
-        """Validates that the class name starts with a capital letter and contains only alphabetic characters."""
-        if not re.match(r"^[A-Z][a-zA-Z]*$", v):
-            raise ValueError(
-                "Name must start with a capital letter and contain only alphabetic characters"
-            )
-        return v
 
 
 class ClassUpdate(ClassBase):
@@ -384,6 +284,40 @@ class ClassUpdate(ClassBase):
         class_data.pop("search_query", None)
 
         return {k: v for k, v in class_data.items() if v is not None and v != []}
+
+
+class EncodedQuery(BaseModel):
+    query: str
+
+    @field_validator("query")
+    def validate_query(cls, v):
+        if not v:
+            raise ValueError("The encoded_query cannot be empty")
+        return v
+
+    def decode(self):
+        try:
+            # URL-decode the encoded string
+            json_string = urllib.parse.unquote(self.query)
+
+            # Convert the JSON string back to a dictionary
+            query_params = json.loads(json_string)
+
+            return query_params
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON format in the encoded query")
+
+    def validate_query(cls, v):
+        base_fields = set(EncodedQuery.__fields__.keys())
+        for key in v.keys():
+            if key not in base_fields:
+                raise ValueError(
+                    f"Key '{key}' in search_query is not a valid field of ClassBase"
+                )
+        return v
+
+    class Config:
+        extra = "forbid"
 
 
 role_schema_map = {
