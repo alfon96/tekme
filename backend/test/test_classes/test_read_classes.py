@@ -33,6 +33,7 @@ class TestClassesRead(unittest.IsolatedAsyncioTestCase):
         self.headers["Authorization"] = f"Bearer {token}"
         async with aiohttp.ClientSession() as session:
             response = await session.get(self.url, headers=self.headers, params=params)
+
             return response.status, await response.json()
 
     async def test_fail_read_classes(self):
@@ -58,7 +59,13 @@ class TestClassesRead(unittest.IsolatedAsyncioTestCase):
 
         for role in custom_types.User:
             token = SharedTestData.tokens[role.value]
-            status, _ = await self.read(
+            status, class_data = await self.read(
                 token=token,
             )
+            data_obj = schemas.ThingsFactory.create_thing(
+                thing=schemas.Data.Class.value,
+                data=class_data,
+            )
+
+            assert data_obj != None
             assert status == 200

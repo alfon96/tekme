@@ -29,13 +29,21 @@ class TestClassesDelete(unittest.IsolatedAsyncioTestCase):
             for x in self.valid_query.keys()
         ]
 
-    async def delete(self, token: str = "", deletion_query: dict = None):
+    async def delete(
+        self, token: str = "", deletion_query: dict = None, debug: bool = False
+    ):
         json = self.valid_query if not deletion_query else deletion_query
 
         self.headers["Authorization"] = f"Bearer {token}"
 
         async with aiohttp.ClientSession() as session:
             response = await session.delete(self.url, headers=self.headers, json=json)
+            if debug:
+                SharedTestData.debug_print(
+                    self.headers,
+                    json,
+                    response.status,
+                )
             return response.status, await response.json()
 
     async def test_fail_delete_classes(self):

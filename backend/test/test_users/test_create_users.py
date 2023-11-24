@@ -19,8 +19,6 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
             "password": "testPassword1!",
             "phone": "+393715485996",
             "profile_pic": "",
-            "details": [],
-            "subjects": [],
         }
         self.invalid_user_data = [
             {
@@ -33,11 +31,6 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
         self.headers = {"X-Test-Env": "true"}
         self.url = "http://backend:80/users/signup"
 
-    def debug_print(self, params, json, response):
-        print(params)
-        print(json)
-        print(response.status)
-
     async def create(self, json: dict, user_role: str, debug: bool = False):
         params = {"user_role": user_role}
 
@@ -46,10 +39,10 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
                 self.url, headers=self.headers, json=json, params=params
             )
             if debug:
-                self.debug_print(params, json, response)
+                SharedTestData.debug_print(params, json, response.status)
             return response.status, await response.json()
 
-    async def test_fail_signup(self):
+    async def test_fail_create(self):
         """Create User - Fail"""
 
         # A not valid input user_role should return 401
@@ -72,21 +65,19 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
 
         # Teachers without subjects field should return 422
         json = self.valid_user_data
+        json["subjects"] = [""]
         status, _ = await self.create(
-            json=json,
-            user_role=custom_types.User.TEACHER.value,
+            json=json, user_role=custom_types.User.TEACHER.value, debug=False
         )
         assert status == 422
 
-    async def test_pass_signup(self):
+    async def test_pass_create(self):
         """Create User - Pass"""
 
         # Check for all roles
         for role in custom_types.User:
             if role.value == custom_types.User.TEACHER.value:
                 self.valid_user_data["subjects"] = ["Maths"]
-            else:
-                self.valid_user_data["subjects"] = []
 
             json = self.valid_user_data
 

@@ -8,8 +8,10 @@ from pydantic import PlainSerializer
 from pydantic.functional_validators import PlainValidator
 from pydantic import WithJsonSchema
 from pydantic_core import PydanticCustomError
-from typing_extensions import Annotated
+from typing_extensions import Annotated, Union, Any
 from fastapi import HTTPException
+from utils.setup import Setup
+import urllib.parse
 
 
 class Data(Enum):
@@ -66,23 +68,6 @@ def validate_phone(v: str) -> str:
 def validate_user_role(v: str) -> str:
     if v not in [user.value for user in User]:
         raise HTTPException(status_code=422, detail="Invalid user Role")
-    print("Inside the Validation")
-    return v
-
-
-def validate_query(v: str) -> dict:
-    if not isinstance(v, dict):
-        raise TypeError("Value must be a dictionary")
-
-    schema = v.get("expected_schema")
-    if schema:
-        base_fields = set(schema.__fields__.keys())
-        for key in v.keys():
-            if key not in base_fields:
-                raise ValueError(
-                    f"Key '{key}' is not a valid field of {schema.__name__}"
-                )
-
     return v
 
 
@@ -125,12 +110,17 @@ UserRole = Annotated[
     WithJsonSchema({"type": "string", f"constraint": "must be inside of {User} class"}),
 ]
 
-Query = Annotated[
-    str,
-    PlainSerializer(lambda v: v.isoformat(), return_type=str),
-    PlainValidator(validate_query),
-    WithJsonSchema({"type": "dict", "constraint": "we will see"}),
-]
+# Query = Annotated[
+#     dict,
+#     PlainSerializer(lambda v: v.isoformat(), return_type=str),
+#     PlainValidator(validate_query),
+#     WithJsonSchema(
+#         {
+#             "type": "dict",
+#             "constraint": "can only contain the keys of the object specified in the schema key",
+#         }
+#     ),
+# ]
 
 Grade = Annotated[
     str,
@@ -138,3 +128,49 @@ Grade = Annotated[
     PlainValidator(validate_grade),
     WithJsonSchema({"type": "int", "constraint": "in between 1 and 12"}),
 ]
+
+
+from pydantic import BaseModel, ValidationError
+from fastapi import HTTPException
+from typing import Type, Any
+from datetime import datetime, date
+import json
+
+
+def validate_value_over_field(value: Any, type_in_schema: Type):
+    try:
+        return attempt_type_conversion(value, type_in_schema)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+def attempt_type_conversion(value: Any, type_in_schema: Type):
+    """Tenta di convertire il valore nel tipo desiderato."""
+    try:
+        if type_in_schema == int:
+            return int(value)
+        elif type_in_schema == float:
+            return float(value)
+        elif type_in_schema == bool:
+            if isinstance(value, str):
+                return value.lower() in ["true", "1", "yes"]
+            return bool(value)
+        elif type_in_schema == datetime:
+            return datetime.fromisoformat(value)
+        elif type_in_schema == date:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        elif type_in_schema == list:
+            return json.loads(value)
+        elif type_in_schema == Union[date, datetime]:
+            for try_type in [date, datetime]:
+                try:
+                    return attempt_type_conversion(value, try_type)
+                except ValueError:
+                    continue
+            raise ValueError("Invalid date/datetime format")
+        elif type_in_schema == str:
+            return str(value)
+        else:
+            raise ValueError(f"Conversion to {type_in_schema} not implemented")
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid value for {type_in_schema}: {e}")

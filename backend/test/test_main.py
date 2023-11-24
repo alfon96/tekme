@@ -27,12 +27,19 @@ async def clean_db_before_tests():
 class SharedTestData:
     tokens: dict = {}
     roles_schemas: dict = {
-        custom_types.User.ADMIN.value: schemas.AdminBase,
-        custom_types.User.TEACHER.value: schemas.TeacherBase,
-        custom_types.User.STUDENT.value: schemas.StudentBase,
-        custom_types.User.RELATIVE.value: schemas.RelativeBase,
+        custom_types.User.ADMIN.value: schemas.AdminSensitiveData,
+        custom_types.User.TEACHER.value: schemas.TeacherSensitiveData,
+        custom_types.User.STUDENT.value: schemas.StudentSensitiveData,
+        custom_types.User.RELATIVE.value: schemas.RelativeSensitiveData,
     }
     classes_id: str = ""
+
+    debug_print = lambda x, y=None, z=None, t=None: (
+        print(x),
+        print(y),
+        print(z),
+        print(t),
+    )
 
 
 if __name__ == "__main__":
@@ -56,6 +63,9 @@ if __name__ == "__main__":
     users_crud = unittest.TestSuite(
         [
             user_create,
+            # user_read,
+            user_update,
+            # user_delete,
         ]
     )
 
@@ -81,7 +91,13 @@ if __name__ == "__main__":
     )
 
     classes_crud = unittest.TestSuite(
-        [user_create, classes_create, classes_read, classes_update, classes_delete]
+        [
+            user_create,
+            classes_create,
+            classes_read,
+            classes_update,
+            classes_delete,
+        ]
     )
 
     # Run the combined suite

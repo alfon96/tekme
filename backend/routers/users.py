@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Body
 from typing import Optional, Union, Annotated
 from schemas import schemas, custom_types
 from crud import crud
@@ -10,7 +10,9 @@ from utils.setup import Setup
 from bson import ObjectId
 from utils.decorators import handle_mongodb_exceptions
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import TypeAdapter
 import json
+from crud import queries
 
 users = APIRouter(prefix="/users", tags=["Users"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/signin")
@@ -28,17 +30,24 @@ def read_token_admin_only(token: Annotated[str, Depends(oauth2_scheme)]):
         raise HTTPException(status_code=401, detail="Only Admins can do this action")
 
 
-def user_role_fun(user_role):
-    """This is necessary because fastAPI doesn't let Query Parameters have complex types"""
-    object = schemas.UserRoles(role=user_role)
-    return object.role
+def get_query_dict(query: str) -> dict:
+    try:
+        return schemas.decode_and_validate_query(
+            encoded_query=query,
+            schema=schemas.UserBase,
+        )
+    except Exception as e:
+        raise e
 
 
 @users.post("/signup")
 @handle_mongodb_exceptions
 async def signup(
-    user_data: schemas.Signup,
-    user_role: str = Depends(user_role_fun),
+    user_data: schemas.AdminSensitiveData
+    | schemas.TeacherSensitiveData
+    | schemas.ScoreBase
+    | schemas.RelativeSensitiveData,
+    user_role: custom_types.User,
     db: Database = Depends(get_db),
 ):
     """Register a new user. Encrypts the password and adds user-specific data based on their role."""
@@ -47,14 +56,10 @@ async def signup(
     hashed_password = encryption.encrypt_password(user_data.password)
     user_data.password = hashed_password
 
-    # Teachers must have field value when they register
-    if user_role == "teachers":
-        if not user_data.subjects or len(user_data.subjects) == 0:
-            raise HTTPException(status_code=422, detail="Missing subject field!")
-
+    document_data = queries.get_create_query_for_mongo(user_data.dict())
     # Query the dB
     user_id = await crud.create_n_documents(
-        collection=user_role, document_data=user_data.dict(), db=db
+        collection=user_role, document_data=document_data, db=db
     )
 
     # Create a JWT token
@@ -91,6 +96,31 @@ async def signin(
     }
 
 
+@users.get("/test")
+@handle_mongodb_exceptions
+async def read_user_test(
+    role: schemas.User,
+    search_query: dict = Depends(get_query_dict),
+    db: Database = Depends(get_db),
+    # _: dict = Depends(read_token_from_header),
+) -> dict:
+    """Retries a user from database without sensitive information"""
+
+    pipeline = queries.get_read_query_for_mongo(search_query)
+    user_data = await crud.read_n_documents(
+        collection=role,
+        pipeline=pipeline,
+        db=db,
+    )
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    # Handle & Return response
+
+    response = schemas.UserFactory.create_user(role, user_data)
+    return response.dict()
+
+
 @users.get("/")
 @handle_mongodb_exceptions
 async def read_user(
@@ -103,20 +133,22 @@ async def read_user(
     user_role = token_payload[f"{Setup.role}"]
 
     # Query the dB
-
-    user_data = await crud.read_n_documents(
-        collection=user_role,
+    pipeline = queries.get_read_query_for_mongo(
         user_id=user_id,
         sensitive_data=False,
+    )
+    user_data = await crud.read_n_documents(
+        collection=user_role,
+        pipeline=pipeline,
+        multi=False,
         db=db,
     )
     if not user_data:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    user_obj = schemas.GenericUser(**user_data)
     # Handle & Return response
 
-    response = custom_types.UserFactory.create_user(user_role, user_obj)
+    response = schemas.UserFactory.create_user(user_role, user_data)
     return response.dict()
 
 
@@ -186,27 +218,20 @@ async def update_user(
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
 
-    # Check if the user data to be updated matches the schema for the user's role
-    if not check_user_role_schema(
-        user_role, update_data, role_schema_map=schemas.role_schema_update_map
-    ):
-        raise HTTPException(
-            status_code=422, detail="The input keys do not match the Schema!"
-        )
+    schemas.validate_query_over_schema(
+        data=update_data,
+        schema=schemas.role_schema_update_map[user_role],
+    )
 
-    if not schemas.check_not_null_values(update_data):
-        raise HTTPException(
-            status_code=422, detail="Input dictionary can't contain null values"
-        )
-
-    # Prepare the search query
-    search_query = {"_id": ObjectId(user_id)}
-
+    search_query, update_query = queries.get_update_query_for_mongo(
+        user_id=user_id,
+        update_data=update_data,
+    )
     # Attempt to update the user data in the database
     result = await crud.update_n_documents(
         collection=user_role,
         search_query=search_query,
-        update_data=update_data,
+        update_query=update_query,
         db=db,
     )
 
@@ -215,7 +240,7 @@ async def update_user(
         raise HTTPException(status_code=400, detail="Fields have NOT been modified.")
 
     # Return a success response if the update is successful
-    return {"status": "success", "detail": "Fields have been modified successfully"}
+    return {"detail": "Fields have been modified successfully"}
 
 
 @users.delete("/")
@@ -254,3 +279,5 @@ async def delete_user(
         raise HTTPException(status_code=410, detail="Couldn't delete user")
     # Return a success response upon successful deletion
     return {"status": "success", "detail": "User was deleted successfully"}
+
+

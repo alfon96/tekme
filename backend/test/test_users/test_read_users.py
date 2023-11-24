@@ -12,13 +12,15 @@ class TestUserRead(unittest.IsolatedAsyncioTestCase):
         self.headers = {"X-Test-Env": "true", "Content-Type": "application/json"}
         self.url = "http://backend:80/users/"
 
-    async def read(self, token: str = None):
+    async def read(self, token: str = None, debug: bool = False):
         "A not valid input user_role should return 422"
         if token:
             self.headers.update({"Authorization": f"Bearer {token}"})
 
         async with aiohttp.ClientSession() as session:
             response = await session.get(self.url, headers=self.headers)
+            if debug:
+                SharedTestData.debug_print(token, response.status)
             return response.status, await response.json()
 
     async def test_fail_read_user(self):
@@ -36,10 +38,8 @@ class TestUserRead(unittest.IsolatedAsyncioTestCase):
         for role in custom_types.User:
             token = SharedTestData.tokens[role.value]
 
-            status, json = await self.read(token)
-            user_data = json
-            schema = SharedTestData.roles_schemas[role]
-            obj = schema(**user_data)
+            status, user_data = await self.read(token=token, debug=False)
+            user_obj = schemas.UserFactory.create_user(role=role, user_data=user_data)
 
-            assert isinstance(obj, schema)
+            assert user_obj != None
             assert status == 200

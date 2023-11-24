@@ -96,7 +96,7 @@ async def read_n_classes(
 @classes.patch("/")
 @handle_mongodb_exceptions
 async def update_n_classes(
-    update_obj: schemas.ClassUpdate,
+    update_obj: schemas.ClassBase,
     multi: bool = False,
     db: Database = Depends(get_db),
     _: str = Depends(read_token_admin_only),

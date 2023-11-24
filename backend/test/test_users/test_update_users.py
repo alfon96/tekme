@@ -35,13 +35,19 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
             for x in self.update_query
         ]
 
-    async def update(self, json: dict = {}, token: str = None):
+    async def update(self, json: dict = {}, token: str = None, debug: bool = False):
         "A not valid input user_role should return 422"
         if token:
             self.headers.update({"Authorization": f"Bearer {token}"})
 
         async with aiohttp.ClientSession() as session:
             response = await session.patch(self.url, headers=self.headers, json=json)
+            if debug:
+                SharedTestData.debug_print(
+                    self.headers,
+                    json,
+                    response.status,
+                )
             return response.status, await response.json()
 
     async def test_fail_update_user(self):
@@ -60,6 +66,7 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
                 status, _ = await self.update(
                     token=token,
                     json=invalid_update_query,
+                    debug=True,
                 )
                 assert status == 422
 
@@ -70,7 +77,9 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
             token = SharedTestData.tokens[role]
 
             status, _ = await self.update(
-                token=token, json=self.valid_update_single_query
+                token=token,
+                json=self.valid_update_single_query,
+                debug=True,
             )
 
             assert status == 200
@@ -78,6 +87,8 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
         # Multi Values Update
         for role in custom_types.User:
             status, _ = await self.update(
-                token=SharedTestData.tokens[role], json=self.valid_update_multi_query
+                token=SharedTestData.tokens[role],
+                json=self.valid_update_multi_query,
+                debug=False,
             )
             assert status == 200

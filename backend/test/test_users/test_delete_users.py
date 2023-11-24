@@ -13,7 +13,9 @@ class TestUserDelete(unittest.IsolatedAsyncioTestCase):
         self.url = "http://backend:80/users/"
         self.params = {"password": "testPassword1!"}
 
-    async def delete(self, token: str = None, password: str = None):
+    async def delete(
+        self, token: str = None, password: str = None, debug: bool = False
+    ):
         "A not valid input user_role should return 422"
         if token:
             self.headers.update({"Authorization": f"Bearer {token}"})
@@ -23,6 +25,12 @@ class TestUserDelete(unittest.IsolatedAsyncioTestCase):
             response = await session.delete(
                 self.url, headers=self.headers, params=params
             )
+            if debug:
+                SharedTestData.debug_print(
+                    self.headers,
+                    params,
+                    response.status,
+                )
             return response.status, await response.json()
 
     async def test_fail_delete_user(self):

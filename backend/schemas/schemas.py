@@ -1,12 +1,13 @@
-from pydantic import BaseModel, Field, EmailStr, field_validator
-from bson import ObjectId
-from typing import List, Optional, Union
-from datetime import datetime
-import re
-from utils import encryption
+from pydantic import (
+    BaseModel,
+    ValidationError,
+    create_model,
+    EmailStr,
+    validator,
+)
+from typing import List, Optional, Union, Type
+from datetime import datetime, date
 from fastapi import HTTPException
-import json
-import urllib.parse
 from schemas.custom_types import (
     User,
     Data,
@@ -15,167 +16,116 @@ from schemas.custom_types import (
     NameSurname,
     Phone,
     Grade,
-    Query,
+    validate_value_over_field,
 )
-from typing import Type
+from urllib.parse import parse_qs
 
 
-# SignInModel
-class Signin(BaseModel):
-    """Represents a basic schema for whatever user to signin."""
+def decode_and_validate_query(encoded_query: str, schema: Type[BaseModel]) -> dict:
+    parsed_query = parse_qs(encoded_query)
+    data = {k: v[0] if len(v) == 1 else v for k, v in parsed_query.items()}
 
-    role: UserRole
-    email: EmailStr
-    password: Password
-
-    class Config:
-        extra = "forbid"
+    return validate_query_over_schema(schema, data)
 
 
-class GenericUser(BaseModel):
-    """Represents a basic schema for whatever user to signup."""
+from pydantic import parse_obj_as
+from typing import Any, get_args, get_type_hints
 
+
+def validate_query_over_schema(data: dict[str, any], schema: Type[BaseModel]):
+    field_types = get_type_hints(schema)
+
+    keys_to_validate = set(data.keys())
+    reference_keys = set(field_types.keys())
+    extra_keys = keys_to_validate - reference_keys
+
+    if extra_keys:
+        raise HTTPException(
+            status_code=422, detail=f"Invalid Keys, you can only use {reference_keys}"
+        )
+
+    for field_name, field_type in field_types.items():
+        existing_field = data.get(field_name, None)
+        if existing_field:
+            try:
+                validate_value_over_field(
+                    value=existing_field, type_in_schema=field_type
+                )
+            except Exception as e:
+                raise e
+    return data
+
+
+class UserBase(BaseModel):
     id: Optional[str] = None
     name: NameSurname
     surname: NameSurname
-    birthday: datetime
+    birthday: date | datetime
     profile_pic: Optional[str] = None
-    subjects: Optional[list[str]] = []
-    details: Optional[list[str]] = []
+    email: EmailStr
 
     class Config:
         extra = "forbid"
+        arbitrary_types_allowed = True
 
 
-class Signup(GenericUser):
-    email: EmailStr
+class UserSensitiveData(UserBase):
     password: Password
     phone: Phone
 
 
-# Admin schema
-class AdminBase(BaseModel):
-    """Represents a basic schema for a student."""
-
-    id: Optional[str]
-    name: NameSurname
-    surname: NameSurname
-    birthday: datetime
-    profile_pic: Optional[str] = None
-
-    class Config:
-        extra = "forbid"
-
-
-class AdminSensitiveData(AdminBase):
-    """Schema for student sign-in, inheriting from StudentBase."""
-
-    email: EmailStr
-    password: Password
+class UserUpdateData(UserBase):
     phone: Phone
 
 
-class AdminUpdateData(AdminBase):
-    """Schema for student sign-in, inheriting from StudentBase."""
-
-    email: EmailStr
-    phone: Phone
+class Admin(UserBase):
+    pass
 
 
-# Teacher schema
-class TeacherBase(BaseModel):
-    """Represents a basic schema for a teacher."""
+class Teacher(UserBase):
+    subjects: List[str]
 
-    id: Optional[str]
-    name: NameSurname
-    surname: NameSurname
-    birthday: datetime
-    profile_pic: Optional[str] = None
-    subjects: list[str]
+    @validator("subjects")
+    def check_subjects_not_empty(cls, v):
+        if not v or len(v) == v.count(""):
+            raise ValueError("Teachers must have at least one subject")
 
-    class Config:
-        extra = "forbid"
+        return v
 
 
-class TeacherSensitiveData(TeacherBase):
-    """Schema for teacher sign-in, inheriting from TeacherBase."""
-
-    email: EmailStr
-    password: Password
-    phone: Phone
+class Student(UserBase):
+    details: List[str] = []
+    relatives_id: List[str] = []
+    teachers_id: List[str] = []
 
 
-class TeacherUpdateData(AdminBase):
-    """Schema for student sign-in, inheriting from StudentBase."""
-
-    email: EmailStr
-    phone: Phone
+class Relative(UserBase):
+    children_id: List[str] = []
 
 
-# Student schema
-class StudentBase(BaseModel):
-    """Represents a basic schema for a student."""
-
-    id: Optional[str]
-    name: NameSurname
-    surname: NameSurname
-    birthday: datetime
-    details: list[str] = []
-    relatives_id: list[str] = []
-    teachers_id: list[str] = []
-    profile_pic: Optional[str] = None
-
-    class Config:
-        extra = "forbid"
+class AdminSensitiveData(Admin, UserSensitiveData):
+    pass
 
 
-class StudentSensitiveData(StudentBase):
-    """Schema for student sign-in, inheriting from StudentBase."""
-
-    email: EmailStr
-    password: Password
-    phone: Phone
+class TeacherSensitiveData(Teacher, UserSensitiveData):
+    pass
 
 
-class StudentUpdateData(AdminBase):
-    """Schema for student sign-in, inheriting from StudentBase."""
-
-    email: EmailStr
-    phone: Phone
+class StudentSensitiveData(Student, UserSensitiveData):
+    pass
 
 
-class UserRoles(BaseModel):
+class RelativeSensitiveData(Relative, UserSensitiveData):
+    pass
+
+
+class Signin(BaseModel):
     role: UserRole
-
-
-# Relative schema
-class RelativeBase(BaseModel):
-    """Represents a basic schema for a relative."""
-
-    id: Optional[str]
-    name: NameSurname
-    surname: NameSurname
-    birthday: datetime
-    children_id: list[str] = []
-    profile_pic: Optional[str] = None
+    email: EmailStr
+    password: Password
 
     class Config:
         extra = "forbid"
-
-
-class RelativeSensitiveData(RelativeBase):
-    """Schema for relative sign-in, inheriting from RelativeBase."""
-
-    email: EmailStr
-    password: Password
-    phone: Phone
-
-
-class RelativeUpdateData(AdminBase):
-    """Schema for student sign-in, inheriting from StudentBase."""
-
-    email: EmailStr
-    phone: Phone
 
 
 class UserFactory(BaseModel):
@@ -185,13 +135,13 @@ class UserFactory(BaseModel):
 
     @staticmethod
     def create_user(
-        role: str, signup_data: GenericUser
-    ) -> Union[AdminBase, TeacherBase, StudentBase, RelativeBase]:
+        role: str, user_data: dict
+    ) -> Union[Admin, Teacher, Student, Relative]:
         role_to_class = {
-            User.ADMIN.value: AdminBase,
-            User.TEACHER.value: TeacherBase,
-            User.STUDENT.value: StudentBase,
-            User.RELATIVE.value: RelativeBase,
+            User.ADMIN.value: Admin,
+            User.TEACHER.value: Teacher,
+            User.STUDENT.value: Student,
+            User.RELATIVE.value: Relative,
         }
 
         target_class = role_to_class.get(role)
@@ -202,9 +152,7 @@ class UserFactory(BaseModel):
         target_fields = target_class.__fields__.keys()
 
         # Filter out invalid keys for the specific class
-        filtered_data = {
-            k: v for k, v in signup_data.dict().items() if k in target_fields
-        }
+        filtered_data = {k: v for k, v in user_data.items() if k in target_fields}
 
         # Create the user object
         return target_class(**filtered_data)
@@ -217,34 +165,14 @@ class ScoreBase(BaseModel):
     id: Optional[str]
     classes: int
     breaks: int
-    date: datetime
+    datetime: datetime
     details: Optional[list[str]] = []
     teacher_id: str
     students_id: Union[str, List[str]]
+    creation: datetime
 
     class Config:
         extra = "forbid"
-
-
-class ScoreUpdate(ScoreBase):
-    search_query: Query
-
-    @field_validator("search_query")
-    def validate_search_query(cls, v, values, **kwargs):
-        base_fields = set(ClassBase.__fields__.keys())
-        for key in v.keys():
-            if key not in base_fields:
-                raise ValueError(
-                    f"Key '{key}' in search_query is not a valid field of ClassBase"
-                )
-        return v
-
-    def values_to_update(self):
-        # Return the object without search_query and filter out None or empty lists
-        score_data = self.dict()
-        score_data.pop("search_query", None)
-
-        return {k: v for k, v in score_data.items() if v is not None and v != []}
 
 
 # Class schema
@@ -258,63 +186,7 @@ class ClassBase(BaseModel):
     teachers_id: Optional[list[str]] = []
     details: Optional[list[str]] = []
     type: Optional[list[str]] = []
-
-    class Config:
-        extra = "forbid"
-
-
-class ClassUpdate(ClassBase):
-    """Schema for updating a class, with an additional search_query field."""
-
-    search_query: dict
-
-    @field_validator("search_query")
-    def validate_search_query(cls, v, values, **kwargs):
-        base_fields = set(ClassBase.__fields__.keys())
-        for key in v.keys():
-            if key not in base_fields:
-                raise ValueError(
-                    f"Key '{key}' in search_query is not a valid field of ClassBase"
-                )
-        return v
-
-    def values_to_update(self):
-        # Return the object without search_query and filter out None or empty lists
-        class_data = self.dict()
-        class_data.pop("search_query", None)
-
-        return {k: v for k, v in class_data.items() if v is not None and v != []}
-
-
-class EncodedQuery(BaseModel):
-    query: str
-
-    @field_validator("query")
-    def validate_query(cls, v):
-        if not v:
-            raise ValueError("The encoded_query cannot be empty")
-        return v
-
-    def decode(self):
-        try:
-            # URL-decode the encoded string
-            json_string = urllib.parse.unquote(self.query)
-
-            # Convert the JSON string back to a dictionary
-            query_params = json.loads(json_string)
-
-            return query_params
-        except json.JSONDecodeError:
-            raise ValueError("Invalid JSON format in the encoded query")
-
-    def validate_query(cls, v):
-        base_fields = set(EncodedQuery.__fields__.keys())
-        for key in v.keys():
-            if key not in base_fields:
-                raise ValueError(
-                    f"Key '{key}' in search_query is not a valid field of ClassBase"
-                )
-        return v
+    creation: datetime
 
     class Config:
         extra = "forbid"
@@ -328,48 +200,36 @@ role_schema_map = {
 }
 
 role_schema_update_map = {
-    User.ADMIN: AdminUpdateData,
-    User.TEACHER: TeacherUpdateData,
-    User.STUDENT: StudentUpdateData,
-    User.RELATIVE: RelativeUpdateData,
+    User.ADMIN: Admin,
+    User.TEACHER: Teacher,
+    User.STUDENT: Student,
+    User.RELATIVE: Relative,
 }
 
 
-def check_keys_in_schema(schema: BaseModel, data: dict) -> bool:
-    schema_keys = set(schema.__fields__.keys())
-    for key in data.keys():
-        if key not in schema_keys:
-            return False
-    return True
+class ThingsFactory(BaseModel):
+    """
+    Represents a general non user class and acts as a factory for scores and classes types.
+    """
 
+    @staticmethod
+    def create_thing(thing: str, data: dict) -> Union[ScoreBase, ClassBase]:
+        thing_to_class = {
+            Data.CLASS.value: ClassBase,
+            Data.SCORE.value: ScoreBase,
+        }
 
-def check_not_null_values(data: dict) -> bool:
-    for key in data.keys():
-        if data[key] == None or data[key] == "":
-            return False
-    return True
+        target_class = thing_to_class.get(thing)
+        if not target_class:
+            raise ValueError(
+                f"Invalid thing, it can only be one in '{[x.value for x in Data]}'"
+            )
 
+        # Get specific class keys
+        target_fields = target_class.__fields__.keys()
 
-def check_input_query(input_query: dict, schema: BaseModel) -> str:
-    """Check input queries."""
-    # Check keys correctness
-    if not check_keys_in_schema(
-        schema=schema,
-        data=input_query,
-    ):
-        return "The provided keys do not match the Schema!"
+        # Filter out invalid keys for the specific class
+        filtered_data = {k: v for k, v in data.items() if k in target_fields}
 
-    # Check non empty values
-    if not check_not_null_values(data=input_query):
-        return "Input dictionary can't contain null values"
-
-    return ""
-
-
-def check_admin(token: str) -> str:
-    """Checks token belongs to admin and input_query correctness"""
-
-    if not encryption.check_admin(token):
-        return "Only Admins can create classes"
-
-    return ""
+        # Create the user object
+        return target_class(**filtered_data)

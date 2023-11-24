@@ -3,3 +3,4 @@ class Setup:
     role = "role"
     expiration = "exp"
     id = "id"
+    querySchemaKey = "schema"

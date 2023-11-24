@@ -43,7 +43,9 @@ class TestClassesUpdate(unittest.IsolatedAsyncioTestCase):
             for key in self.valid_query
         ]
 
-    async def update(self, token: str = "", multi: bool = False, json: dict = {}):
+    async def update(
+        self, token: str = "", multi: bool = False, json: dict = {}, debug: bool = False
+    ):
         self.params["multi"] = f"{multi}"
         self.headers["Authorization"] = f"Bearer {token}"
 
@@ -51,6 +53,13 @@ class TestClassesUpdate(unittest.IsolatedAsyncioTestCase):
             response = await session.patch(
                 self.url, headers=self.headers, params=self.params, json=json
             )
+            if debug:
+                SharedTestData.debug_print(
+                    self.headers,
+                    self.params,
+                    json,
+                    response.status,
+                )
             return response.status, await response.json()
 
     async def test_fail_update_classes(self):
