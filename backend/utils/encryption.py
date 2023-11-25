@@ -5,6 +5,7 @@ from decouple import config
 from utils.setup import Setup
 from fastapi import HTTPException, Request
 from schemas import schemas, custom_types
+from urllib.parse import parse_qs
 
 JWT_SECRET = config("JWT_SECRET")
 JWT_ALGORITHM = config("JWT_ALGORITHM")
@@ -95,3 +96,16 @@ def check_admin(token):
     if token_payload["role"] != custom_types.User.ADMIN.value:
         return False
     return True
+
+
+def decode_query(query: str) -> dict:
+    """
+    Decodes a query string into a dictionary. For each key in the query string,
+    if there's only one value, it returns that value directly; otherwise, it returns a list of values.
+    """
+    parsed = parse_qs(query)
+
+    # Convert each list of values into a single value if the list contains only one item
+    decoded = {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
+
+    return decoded

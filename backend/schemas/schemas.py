@@ -16,51 +16,15 @@ from schemas.custom_types import (
     NameSurname,
     Phone,
     Grade,
-    validate_value_over_field,
 )
-from urllib.parse import parse_qs
-
-
-def decode_and_validate_query(encoded_query: str, schema: Type[BaseModel]) -> dict:
-    parsed_query = parse_qs(encoded_query)
-    data = {k: v[0] if len(v) == 1 else v for k, v in parsed_query.items()}
-
-    return validate_query_over_schema(schema, data)
-
-
-from pydantic import parse_obj_as
-from typing import Any, get_args, get_type_hints
-
-
-def validate_query_over_schema(data: dict[str, any], schema: Type[BaseModel]):
-    field_types = get_type_hints(schema)
-
-    keys_to_validate = set(data.keys())
-    reference_keys = set(field_types.keys())
-    extra_keys = keys_to_validate - reference_keys
-
-    if extra_keys:
-        raise HTTPException(
-            status_code=422, detail=f"Invalid Keys, you can only use {reference_keys}"
-        )
-
-    for field_name, field_type in field_types.items():
-        existing_field = data.get(field_name, None)
-        if existing_field:
-            try:
-                validate_value_over_field(
-                    value=existing_field, type_in_schema=field_type
-                )
-            except Exception as e:
-                raise e
-    return data
 
 
 class UserBase(BaseModel):
     id: Optional[str] = None
     name: NameSurname
     surname: NameSurname
-    birthday: date | datetime
+    birthday: Union[datetime, date]
+    details: List[str] = []
     profile_pic: Optional[str] = None
     email: EmailStr
 
@@ -94,7 +58,6 @@ class Teacher(UserBase):
 
 
 class Student(UserBase):
-    details: List[str] = []
     relatives_id: List[str] = []
     teachers_id: List[str] = []
 
@@ -205,6 +168,55 @@ role_schema_update_map = {
     User.STUDENT: Student,
     User.RELATIVE: Relative,
 }
+
+
+def find_unique_fields(base_class: BaseModel, sub_class: BaseModel) -> BaseModel:
+    base_fields = set(base_class.__fields__)
+    sub_class_fields = set(sub_class.__fields__)
+    unique_fields = sub_class_fields - base_fields
+
+    # Prepare fields for the new model
+    try:
+        fields = {
+            field_name: (field.annotation, field.default)
+            for field_name, field in sub_class.__fields__.items()
+            if field_name in unique_fields
+        }
+        model = create_model("SubsetData", **fields)
+        return model
+    except Exception as e:
+        raise e
+
+
+def validate_query_over_schema(base_model: BaseModel, query: dict) -> BaseModel:
+    # Extract keys from both query and model
+    base_fields = set(base_model.__fields__)
+    query_keys = set(query.keys())
+    unique_fields = query_keys - base_fields
+
+    # If the query has different keys -> status_code 422
+    if unique_fields:
+        raise HTTPException(
+            status_code=422, detail=f"You can only use this keys {base_fields}"
+        )
+
+    query_mathing_fields = {
+        field_name: (field.annotation, field.default)
+        for field_name, field in base_model.__fields__.items()
+        if field_name in query_keys
+    }
+
+    model = create_model("QuerySubModel", **query_mathing_fields)
+
+    # Try parsing the query in the newly created model to get full query validation
+
+    try:
+        validated_query = model(**query)
+        return validated_query.dict()
+    except ValidationError as e:
+        raise e
+
+    # Create a new dynamic model
 
 
 class ThingsFactory(BaseModel):

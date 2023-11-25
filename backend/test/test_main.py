@@ -63,9 +63,9 @@ if __name__ == "__main__":
     users_crud = unittest.TestSuite(
         [
             user_create,
-            # user_read,
+            user_read,
             user_update,
-            # user_delete,
+            user_delete,
         ]
     )
 

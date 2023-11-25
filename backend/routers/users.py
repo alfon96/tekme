@@ -18,26 +18,34 @@ users = APIRouter(prefix="/users", tags=["Users"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/signin")
 
 
-def read_token_from_header(token: Annotated[str, Depends(oauth2_scheme)]):
-    return encryption.read_token(token)
-
-
-def read_token_admin_only(token: Annotated[str, Depends(oauth2_scheme)]):
-    payload = encryption.read_token(token)
-    if payload[f"{Setup.role}"] == custom_types.User.ADMIN.value:
+def read_token_from_header_factory(roles: list[str] = None):
+    def read_token_from_header(token: Annotated[str, Depends(oauth2_scheme)]):
+        payload = encryption.read_token(token)
+        if roles and payload["role"] not in roles:
+            raise HTTPException(
+                status_code=401, detail=f"Only {roles} can do this action."
+            )
         return payload
-    else:
-        raise HTTPException(status_code=401, detail="Only Admins can do this action")
+
+    return read_token_from_header
 
 
-def get_query_dict(query: str) -> dict:
+def decode_and_validate_query(query: str) -> dict:
     try:
-        return schemas.decode_and_validate_query(
-            encoded_query=query,
-            schema=schemas.UserBase,
+        # decode Query
+        decoded_query = encryption.decode_query(query)
+
+        return schemas.validate_query_over_schema(
+            base_model=schemas.UserBase,
+            query=decoded_query,
         )
+
     except Exception as e:
         raise e
+
+
+def password_validator(password: str) -> str:
+    return TypeAdapter(custom_types.Password).validate_python(password)
 
 
 @users.post("/signup")
@@ -96,13 +104,13 @@ async def signin(
     }
 
 
-@users.get("/test")
+@users.get("/search")
 @handle_mongodb_exceptions
-async def read_user_test(
+async def read_other_user(
     role: schemas.User,
-    search_query: dict = Depends(get_query_dict),
+    search_query: dict = Depends(decode_and_validate_query),
     db: Database = Depends(get_db),
-    # _: dict = Depends(read_token_from_header),
+    _: dict = Depends(read_token_from_header_factory()),
 ) -> dict:
     """Retries a user from database without sensitive information"""
 
@@ -125,16 +133,17 @@ async def read_user_test(
 @handle_mongodb_exceptions
 async def read_user(
     db: Database = Depends(get_db),
-    token_payload: dict = Depends(read_token_from_header),
+    token_payload: dict = Depends(read_token_from_header_factory()),
 ) -> dict:
     """Retries a user from database without sensitive information"""
 
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
+    search_query = {f"{Setup.id}": user_id}
 
     # Query the dB
     pipeline = queries.get_read_query_for_mongo(
-        user_id=user_id,
+        search_query=search_query,
         sensitive_data=False,
     )
     user_data = await crud.read_n_documents(
@@ -174,11 +183,19 @@ def check_user_role_schema(
 @users.patch("/change_password")
 @handle_mongodb_exceptions
 async def update_user_password(
-    old_password: custom_types.Password,
-    new_password: custom_types.Password,
+    old_password: str = Depends(password_validator),
+    new_password: str = Depends(password_validator),
     db: Database = Depends(get_db),
-    token_payload: dict = Depends(read_token_from_header),
+    token_payload: dict = Depends(
+        read_token_from_header_factory(),
+    ),
 ) -> dict:
+    # Validate passwords
+    if old_password == new_password:
+        raise HTTPException(
+            status_code=422, detail="Old password and New Passwords are the same"
+        )
+
     role = token_payload[f"{Setup.role}"]
     user_id = token_payload[f"{Setup.id}"]
 
@@ -201,7 +218,7 @@ async def update_user_password(
         )
 
         if result.modified_count > 0:
-            return {"message": "Password Changed succesfully"}
+            return {"message": "Password Changed successfully"}
         else:
             raise HTTPException(status_code=410, detail="Password was NOT updated.")
 
@@ -211,33 +228,98 @@ async def update_user_password(
 async def update_user(
     update_data: dict,
     db: Database = Depends(get_db),
-    token_payload: dict = Depends(read_token_from_header),
+    token_payload: dict = Depends(read_token_from_header_factory()),
 ) -> dict:
     """Update user data based on the user role."""
     # Extract user ID and role from the token payload
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
 
-    schemas.validate_query_over_schema(
-        data=update_data,
-        schema=schemas.role_schema_update_map[user_role],
+    update_data = schemas.validate_query_over_schema(
+        base_model=schemas.role_schema_update_map[user_role],
+        query=update_data,
     )
 
-    search_query, update_query = queries.get_update_query_for_mongo(
-        user_id=user_id,
+    search_query = {f"{Setup.id}": user_id}
+
+    search_query_mongo, update_query_mongo = queries.get_update_query_for_mongo(
+        search_query=search_query,
         update_data=update_data,
     )
     # Attempt to update the user data in the database
     result = await crud.update_n_documents(
         collection=user_role,
-        search_query=search_query,
-        update_query=update_query,
+        search_query=search_query_mongo,
+        update_query=update_query_mongo,
         db=db,
     )
 
     # Check if the update was successful
-    if not result.modified_count == 1:
-        raise HTTPException(status_code=400, detail="Fields have NOT been modified.")
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=404, detail=f"No user found with id '{user_id}'."
+        )
+
+    if result.modified_count < 1:
+        raise HTTPException(
+            status_code=200,
+            detail="New information was already found in the dB, no modifications were done.",
+        )
+
+    # Return a success response if the update is successful
+    return {"detail": "Fields have been modified successfully"}
+
+
+@users.patch("/admin_update")
+@handle_mongodb_exceptions
+async def update_other_user(
+    id: str,
+    role: schemas.User,
+    update_data: dict,
+    db: Database = Depends(get_db),
+    _: dict = Depends(
+        read_token_from_header_factory(
+            roles=[
+                schemas.User.ADMIN,
+            ]
+        )
+    ),
+) -> dict:
+    """Update user data based on the user role."""
+
+    # select only fields that can be edited by admin
+    editable_schema_subset = schemas.find_unique_fields(
+        base_class=schemas.UserBase, sub_class=schemas.role_schema_update_map[role]
+    )
+
+    schemas.validate_query_over_schema(
+        base_model=editable_schema_subset,
+        query=update_data,
+    )
+
+    search_query = {f"{Setup.id}": id}
+
+    search_query_mongo, update_query_mongo = queries.get_update_query_for_mongo(
+        search_query=search_query,
+        update_data=update_data,
+    )
+    # Attempt to update the user data in the database
+    result = await crud.update_n_documents(
+        collection=role,
+        search_query=search_query_mongo,
+        update_query=update_query_mongo,
+        db=db,
+    )
+
+    # Check if the update was successful
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail=f"No user found with id '{id}'.")
+
+    if result.modified_count < 1:
+        raise HTTPException(
+            status_code=200,
+            detail="New information was already found in the dB, no modifications were done.",
+        )
 
     # Return a success response if the update is successful
     return {"detail": "Fields have been modified successfully"}
@@ -246,19 +328,28 @@ async def update_user(
 @users.delete("/")
 @handle_mongodb_exceptions
 async def delete_user(
-    password: str,
+    password: str = Depends(password_validator),
     db: Database = Depends(get_db),
-    token_payload: dict = Depends(read_token_from_header),
+    token_payload: str = Depends(read_token_from_header_factory()),
 ):
     """Delete a user after verifying their password."""
+
     # Extract user ID and role from the token payload
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
 
     # Retrieve the user data to verify the password
+    search_query = {f"{Setup.id}": user_id}
+    pipeline = queries.get_read_query_for_mongo(
+        search_query=search_query,
+        sensitive_data=True,
+    )
 
     user_data = await crud.read_n_documents(
-        collection=user_role, user_id=user_id, db=db, sensitive_data=True
+        collection=user_role,
+        pipeline=pipeline,
+        multi=False,
+        db=db,
     )
 
     if not user_data:
@@ -268,7 +359,40 @@ async def delete_user(
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Prepare the search query for deletion
-    search_query = {"_id": ObjectId(user_id)}
+
+    search_query_for_mongo = queries.get_delete_query_for_mongo(search_query)
+
+    # Delete the user from the database
+    result = await crud.delete_n_documents(
+        collection=user_role, search_query=search_query_for_mongo, db=db
+    )
+
+    if result.deleted_count < 1:
+        raise HTTPException(status_code=410, detail="Couldn't delete user")
+    # Return a success response upon successful deletion
+    return {"status": "success", "detail": "User was deleted successfully"}
+
+
+@users.delete("/{user_id}")
+@handle_mongodb_exceptions
+async def delete_other_user(
+    user_id: str,
+    user_role: schemas.User,
+    db: Database = Depends(get_db),
+    _: str = Depends(
+        read_token_from_header_factory(
+            roles=[
+                schemas.User.ADMIN,
+            ]
+        )
+    ),
+):
+    """Delete a user after verifying their password."""
+
+    # The admins can remove any user
+
+    # Prepare the search query for deletion
+    search_query = queries.get_delete_query_for_mongo(user_id)
 
     # Delete the user from the database
     deletion = await crud.delete_n_documents(
@@ -279,5 +403,3 @@ async def delete_user(
         raise HTTPException(status_code=410, detail="Couldn't delete user")
     # Return a success response upon successful deletion
     return {"status": "success", "detail": "User was deleted successfully"}
-
-

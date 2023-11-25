@@ -45,8 +45,9 @@ def validate_password(v):
         and re.search(special_symbol_regex, v)
         and re.search(digit_regex, v)
     ):
-        raise ValueError(
-            "v must contain at least one uppercase and lowercase letters, one special character, and one number!"
+        raise HTTPException(
+            status_code=422,
+            detail="password must contain at least one uppercase and lowercase letters, one special character, and one number!",
         )
 
     return v
@@ -128,49 +129,3 @@ Grade = Annotated[
     PlainValidator(validate_grade),
     WithJsonSchema({"type": "int", "constraint": "in between 1 and 12"}),
 ]
-
-
-from pydantic import BaseModel, ValidationError
-from fastapi import HTTPException
-from typing import Type, Any
-from datetime import datetime, date
-import json
-
-
-def validate_value_over_field(value: Any, type_in_schema: Type):
-    try:
-        return attempt_type_conversion(value, type_in_schema)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-
-
-def attempt_type_conversion(value: Any, type_in_schema: Type):
-    """Tenta di convertire il valore nel tipo desiderato."""
-    try:
-        if type_in_schema == int:
-            return int(value)
-        elif type_in_schema == float:
-            return float(value)
-        elif type_in_schema == bool:
-            if isinstance(value, str):
-                return value.lower() in ["true", "1", "yes"]
-            return bool(value)
-        elif type_in_schema == datetime:
-            return datetime.fromisoformat(value)
-        elif type_in_schema == date:
-            return datetime.strptime(value, "%Y-%m-%d").date()
-        elif type_in_schema == list:
-            return json.loads(value)
-        elif type_in_schema == Union[date, datetime]:
-            for try_type in [date, datetime]:
-                try:
-                    return attempt_type_conversion(value, try_type)
-                except ValueError:
-                    continue
-            raise ValueError("Invalid date/datetime format")
-        elif type_in_schema == str:
-            return str(value)
-        else:
-            raise ValueError(f"Conversion to {type_in_schema} not implemented")
-    except (ValueError, TypeError) as e:
-        raise ValueError(f"Invalid value for {type_in_schema}: {e}")

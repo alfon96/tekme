@@ -9,7 +9,7 @@ from pymongo import errors as pymongo_errors
 from utils.setup import Setup
 import json
 from utils.decorators import handle_mongodb_exceptions
-from routers.users import read_token_from_header, read_token_admin_only
+from routers.users import read_token_from_header_factory
 from pydantic import BaseModel
 
 classes = APIRouter(prefix="/classes", tags=["Classes"])
@@ -20,7 +20,7 @@ classes = APIRouter(prefix="/classes", tags=["Classes"])
 async def create_n_classes(
     classes: Union[schemas.ClassBase, list[schemas.ClassBase]],
     db: Database = Depends(get_db),
-    token: str = Depends(read_token_admin_only),
+    token: str = Depends(read_token_from_header_factory),
 ):
     """Create one or multiple class records. Accepts either a single class object or a list of class objects."""
 
@@ -62,7 +62,7 @@ async def read_n_classes(
     grade: int,
     multi: bool = False,
     db: Database = Depends(get_db),
-    _: str = Depends(read_token_from_header),
+    _: str = Depends(read_token_from_header_factory),
 ):
     """Read one or multiple class records. Accepts optional parameters name and/or grade, otherwise will return any document."""
 
@@ -99,7 +99,7 @@ async def update_n_classes(
     update_obj: schemas.ClassBase,
     multi: bool = False,
     db: Database = Depends(get_db),
-    _: str = Depends(read_token_admin_only),
+    _: str = Depends(read_token_from_header_factory),
 ):
     # Query the dB
     result = await crud.update_n_documents(
@@ -130,7 +130,7 @@ async def delete_n_classes(
     delete_query: dict,
     multi: bool = False,
     db: Database = Depends(get_db),
-    token: str = Depends(read_token_admin_only),
+    token: str = Depends(read_token_from_header_factory),
 ):
     # Query should respect schemas and not have null values
     notValidQuery = schemas.check_input_query(

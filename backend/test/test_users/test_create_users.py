@@ -17,6 +17,7 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
             "birthday": datetime.now().isoformat(),
             "email": "test@test.com",
             "password": "testPassword1!",
+            "details": ["Some Details"],
             "phone": "+393715485996",
             "profile_pic": "",
         }

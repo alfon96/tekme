@@ -66,7 +66,7 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
                 status, _ = await self.update(
                     token=token,
                     json=invalid_update_query,
-                    debug=True,
+                    debug=False,
                 )
                 assert status == 422
 
@@ -79,7 +79,7 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
             status, _ = await self.update(
                 token=token,
                 json=self.valid_update_single_query,
-                debug=True,
+                debug=False,
             )
 
             assert status == 200

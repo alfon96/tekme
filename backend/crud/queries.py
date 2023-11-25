@@ -3,22 +3,31 @@ from datetime import datetime, date, timedelta
 from utils.setup import Setup
 
 
-def transform_data_types_for_mongodb(query: dict = {}, user_id: str = None):
+def transform_data_types_for_mongodb(
+    query: dict = {}, isSearching: bool = True
+) -> dict:
+    mongo_db_query = {}
+
     for x, y in query.items():
-        if isinstance(y, datetime):
-            query[x] = {"$gte": y, "$lt": y + timedelta(days=1)}
+        if isinstance(y, datetime) and isSearching:
+            mongo_db_query[x] = {"$gte": y, "$lt": y + timedelta(days=1)}
 
-        if isinstance(y, date):
+        elif isinstance(y, date):
             birthday_datetime: datetime = datetime(y.year, y.month, y.day)
-            query[x] = {
-                "$gte": birthday_datetime,
-                "$lt": birthday_datetime + timedelta(days=1),
-            }
+            if isSearching:
+                mongo_db_query[x] = {
+                    "$gte": birthday_datetime,
+                    "$lt": birthday_datetime + timedelta(days=1),
+                }
+            else:
+                mongo_db_query[x] = birthday_datetime
 
-    if user_id:
-        query.update({"_id": ObjectId(user_id)})
+        elif x == f"{Setup.id}":
+            mongo_db_query["_id"] = ObjectId(y)
+        else:
+            mongo_db_query[x] = y
 
-    return query
+    return mongo_db_query
 
 
 def get_create_query_for_mongo(document: dict = {}) -> dict:
@@ -30,10 +39,9 @@ def get_create_query_for_mongo(document: dict = {}) -> dict:
 
 def get_read_query_for_mongo(
     search_query: dict = {},
-    user_id: str = None,
     sensitive_data: bool = False,
 ):
-    search_query = transform_data_types_for_mongodb(search_query, user_id)
+    search_query = transform_data_types_for_mongodb(search_query)
 
     projections = {"_id": 0}
     if not sensitive_data:
@@ -49,11 +57,19 @@ def get_read_query_for_mongo(
 
 
 def get_update_query_for_mongo(
-    user_id: str = "",
     search_query: dict = {},
     update_data: dict = {},
 ) -> (dict, dict):
-    search_query = transform_data_types_for_mongodb(search_query, user_id)
-    update_query = {"$set": transform_data_types_for_mongodb(update_data)}
+    search_query = transform_data_types_for_mongodb(search_query)
+    update_query = {
+        "$set": transform_data_types_for_mongodb(update_data, isSearching=False)
+    }
 
     return search_query, update_query
+
+
+def get_delete_query_for_mongo(
+    search_query: dict = {},
+):
+    search_query = transform_data_types_for_mongodb(search_query)
+    return search_query

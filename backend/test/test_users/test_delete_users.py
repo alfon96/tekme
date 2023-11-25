@@ -55,5 +55,5 @@ class TestUserDelete(unittest.IsolatedAsyncioTestCase):
         for role in custom_types.User:
             token = SharedTestData.tokens[role.value]
             SharedTestData.tokens[role] = {}
-            status, _ = await self.delete(token)
+            status, _ = await self.delete(token, debug=False)
             assert status == 200
