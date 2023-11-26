@@ -3,7 +3,7 @@ from typing import Optional, Union, Annotated
 from schemas import schemas, custom_types
 from crud import crud
 from pymongo.database import Database
-from utils import encryption
+from services import encryption
 from db.db_handler import get_db
 from pymongo import errors as pymongo_errors
 from utils.setup import Setup
@@ -13,6 +13,7 @@ from fastapi.security import OAuth2PasswordBearer
 from pydantic import TypeAdapter
 import json
 from crud import queries
+from services import data_service
 
 users = APIRouter(prefix="/users", tags=["Users"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/signin")
@@ -28,20 +29,6 @@ def read_token_from_header_factory(roles: list[str] = None):
         return payload
 
     return read_token_from_header
-
-
-def decode_and_validate_query(query: str) -> dict:
-    try:
-        # decode Query
-        decoded_query = encryption.decode_query(query)
-
-        return schemas.validate_query_over_schema(
-            base_model=schemas.UserBase,
-            query=decoded_query,
-        )
-
-    except Exception as e:
-        raise e
 
 
 def password_validator(password: str) -> str:
@@ -64,14 +51,14 @@ async def signup(
     hashed_password = encryption.encrypt_password(user_data.password)
     user_data.password = hashed_password
 
-    document_data = queries.get_create_query_for_mongo(user_data.dict())
-    # Query the dB
-    user_id = await crud.create_n_documents(
-        collection=user_role, document_data=document_data, db=db
+    user_id = await data_service.create_service(
+        data=user_data,
+        key_to_schema_map=user_role,
+        db=db,
     )
 
     # Create a JWT token
-    token = encryption.create_jwt_token(str(user_id), user_role)
+    token = encryption.create_jwt_token(user_id, user_role)
 
     # Return response
     return {"token": token, "message": "User created successfully"}
@@ -80,27 +67,33 @@ async def signup(
 @users.post("/signin")
 @handle_mongodb_exceptions
 async def signin(
+    user_role: schemas.User,
     credentials: schemas.Signin,
     db: Database = Depends(get_db),
 ):
     # Find User
-
-    user = await crud.get_user_by_email(credentials.role, credentials.email, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    user_data = await data_service.read_service(
+        search_query=credentials.get_email_query(),
+        key_to_schema_map=user_role,
+        db=db,
+        isSensitive=True,
+    )
 
     # Verify password
-    if not encryption.check_password(credentials.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not encryption.check_password(credentials.password, user_data["password"]):
+        raise HTTPException(status_code=401, detail="Invalid password")
 
     # Create a JWT
-    token = encryption.create_jwt_token(str(user["_id"]), credentials.role)
+    token = encryption.create_jwt_token(
+        user_id=str(user_data[f"{Setup.id}"]),
+        user_role=user_role,
+    )
 
     # Return the response
     return {
         "token": token,
-        f"{Setup.id}": str(user["_id"]),
-        f"{Setup.role}": credentials.role,
+        f"{Setup.id}": user_data[f"{Setup.id}"],
+        f"{Setup.role}": user_role,
     }
 
 
@@ -108,23 +101,20 @@ async def signin(
 @handle_mongodb_exceptions
 async def read_other_user(
     role: schemas.User,
-    search_query: dict = Depends(decode_and_validate_query),
+    search_query: str,
     db: Database = Depends(get_db),
     _: dict = Depends(read_token_from_header_factory()),
 ) -> dict:
     """Retries a user from database without sensitive information"""
 
-    pipeline = queries.get_read_query_for_mongo(search_query)
-    user_data = await crud.read_n_documents(
-        collection=role,
-        pipeline=pipeline,
+    # Use the Read Service
+    user_data = data_service.read_service(
+        search_query=search_query,
+        key_to_schema_map=role,
         db=db,
     )
-    if not user_data:
-        raise HTTPException(status_code=404, detail="User not found.")
 
-    # Handle & Return response
-
+    # Build Response
     response = schemas.UserFactory.create_user(role, user_data)
     return response.dict()
 
@@ -136,48 +126,21 @@ async def read_user(
     token_payload: dict = Depends(read_token_from_header_factory()),
 ) -> dict:
     """Retries a user from database without sensitive information"""
-
+    # Collect inputs
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
     search_query = {f"{Setup.id}": user_id}
 
-    # Query the dB
-    pipeline = queries.get_read_query_for_mongo(
+    # Use the Read Service
+    user_data = await data_service.read_service(
         search_query=search_query,
-        sensitive_data=False,
-    )
-    user_data = await crud.read_n_documents(
-        collection=user_role,
-        pipeline=pipeline,
-        multi=False,
+        key_to_schema_map=user_role,
         db=db,
     )
-    if not user_data:
-        raise HTTPException(status_code=404, detail="User not found.")
 
-    # Handle & Return response
-
+    # Build Response
     response = schemas.UserFactory.create_user(user_role, user_data)
     return response.dict()
-
-
-def check_user_role_schema(
-    user_role: str,
-    update_data: dict,
-    role_schema_map: dict = schemas.role_schema_map,
-    _: str = Depends(oauth2_scheme),
-):
-    """Check if the update data matches the schema based on the user role."""
-
-    # Mapping user roles to their respective schema
-
-    # Validate update data against the role-specific schema
-    if user_role not in role_schema_map or not schemas.check_keys_in_schema(
-        role_schema_map[user_role], update_data
-    ):
-        return False
-
-    return True
 
 
 @users.patch("/change_password")
@@ -226,7 +189,7 @@ async def update_user_password(
 @users.patch("/")
 @handle_mongodb_exceptions
 async def update_user(
-    update_data: dict,
+    update_query: dict,
     db: Database = Depends(get_db),
     token_payload: dict = Depends(read_token_from_header_factory()),
 ) -> dict:
@@ -234,47 +197,21 @@ async def update_user(
     # Extract user ID and role from the token payload
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
-
-    update_data = schemas.validate_query_over_schema(
-        base_model=schemas.role_schema_update_map[user_role],
-        query=update_data,
-    )
-
     search_query = {f"{Setup.id}": user_id}
 
-    search_query_mongo, update_query_mongo = queries.get_update_query_for_mongo(
+    return await data_service.update_service(
         search_query=search_query,
-        update_data=update_data,
-    )
-    # Attempt to update the user data in the database
-    result = await crud.update_n_documents(
-        collection=user_role,
-        search_query=search_query_mongo,
-        update_query=update_query_mongo,
+        update_query=update_query,
+        key_to_schema_map=user_role,
         db=db,
     )
-
-    # Check if the update was successful
-    if result.matched_count == 0:
-        raise HTTPException(
-            status_code=404, detail=f"No user found with id '{user_id}'."
-        )
-
-    if result.modified_count < 1:
-        raise HTTPException(
-            status_code=200,
-            detail="New information was already found in the dB, no modifications were done.",
-        )
-
-    # Return a success response if the update is successful
-    return {"detail": "Fields have been modified successfully"}
 
 
 @users.patch("/admin_update")
 @handle_mongodb_exceptions
 async def update_other_user(
-    id: str,
-    role: schemas.User,
+    user_id: str,
+    user_role: schemas.User,
     update_data: dict,
     db: Database = Depends(get_db),
     _: dict = Depends(
@@ -287,42 +224,13 @@ async def update_other_user(
 ) -> dict:
     """Update user data based on the user role."""
 
-    # select only fields that can be edited by admin
-    editable_schema_subset = schemas.find_unique_fields(
-        base_class=schemas.UserBase, sub_class=schemas.role_schema_update_map[role]
-    )
-
-    schemas.validate_query_over_schema(
-        base_model=editable_schema_subset,
-        query=update_data,
-    )
-
-    search_query = {f"{Setup.id}": id}
-
-    search_query_mongo, update_query_mongo = queries.get_update_query_for_mongo(
+    search_query = {f"{Setup.id}": user_id}
+    return await data_service.update_service(
         search_query=search_query,
-        update_data=update_data,
-    )
-    # Attempt to update the user data in the database
-    result = await crud.update_n_documents(
-        collection=role,
-        search_query=search_query_mongo,
-        update_query=update_query_mongo,
+        update_query=update_data,
+        key_to_schema_map=user_role,
         db=db,
     )
-
-    # Check if the update was successful
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail=f"No user found with id '{id}'.")
-
-    if result.modified_count < 1:
-        raise HTTPException(
-            status_code=200,
-            detail="New information was already found in the dB, no modifications were done.",
-        )
-
-    # Return a success response if the update is successful
-    return {"detail": "Fields have been modified successfully"}
 
 
 @users.delete("/")
@@ -337,40 +245,27 @@ async def delete_user(
     # Extract user ID and role from the token payload
     user_id = token_payload[f"{Setup.id}"]
     user_role = token_payload[f"{Setup.role}"]
-
-    # Retrieve the user data to verify the password
     search_query = {f"{Setup.id}": user_id}
-    pipeline = queries.get_read_query_for_mongo(
-        search_query=search_query,
-        sensitive_data=True,
-    )
 
-    user_data = await crud.read_n_documents(
-        collection=user_role,
-        pipeline=pipeline,
-        multi=False,
+    user_data = await data_service.read_service(
+        search_query=search_query,
+        key_to_schema_map=user_role,
         db=db,
+        isSensitive=True,
     )
 
     if not user_data:
         raise HTTPException(status_code=404, detail="User not found")
+
     # Check if the provided password matches the user's password
     if not encryption.check_password(password, user_data["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Prepare the search query for deletion
-
-    search_query_for_mongo = queries.get_delete_query_for_mongo(search_query)
-
-    # Delete the user from the database
-    result = await crud.delete_n_documents(
-        collection=user_role, search_query=search_query_for_mongo, db=db
+    return await data_service.delete_service(
+        search_query=search_query,
+        key_to_schema_map=user_role,
+        db=db,
     )
-
-    if result.deleted_count < 1:
-        raise HTTPException(status_code=410, detail="Couldn't delete user")
-    # Return a success response upon successful deletion
-    return {"status": "success", "detail": "User was deleted successfully"}
 
 
 @users.delete("/{user_id}")
@@ -388,18 +283,9 @@ async def delete_other_user(
     ),
 ):
     """Delete a user after verifying their password."""
-
-    # The admins can remove any user
-
-    # Prepare the search query for deletion
-    search_query = queries.get_delete_query_for_mongo(user_id)
-
-    # Delete the user from the database
-    deletion = await crud.delete_n_documents(
-        collection=user_role, search_query=search_query, db=db
+    search_query = {f"{Setup.id}": user_id}
+    return await data_service.delete_service(
+        search_query=search_query,
+        key_to_schema_map=user_role,
+        db=db,
     )
-
-    if not deletion:
-        raise HTTPException(status_code=410, detail="Couldn't delete user")
-    # Return a success response upon successful deletion
-    return {"status": "success", "detail": "User was deleted successfully"}

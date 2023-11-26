@@ -36,7 +36,7 @@ class TestUserUpdate(unittest.IsolatedAsyncioTestCase):
         ]
 
     async def update(self, json: dict = {}, token: str = None, debug: bool = False):
-        "A not valid input user_role should return 422"
+        """A not valid input user_role should return 422"""
         if token:
             self.headers.update({"Authorization": f"Bearer {token}"})
 

@@ -3,10 +3,8 @@ import phonenumbers
 import re
 from enum import Enum
 from decouple import config
-from pydantic import constr
-from pydantic import PlainSerializer
+from pydantic import conint, PlainSerializer, WithJsonSchema
 from pydantic.functional_validators import PlainValidator
-from pydantic import WithJsonSchema
 from pydantic_core import PydanticCustomError
 from typing_extensions import Annotated, Union, Any
 from fastapi import HTTPException
@@ -73,6 +71,10 @@ def validate_user_role(v: str) -> str:
 
 
 def validate_grade(v: int) -> int:
+    if not isinstance(v, int):
+        raise HTTPException(
+            status_code=422, detail="Grade must be a number between 1 and 12"
+        )
     if not 1 <= v <= 12:
         raise ValueError("Grade must be between 1 and 12")
     return v
@@ -111,21 +113,11 @@ UserRole = Annotated[
     WithJsonSchema({"type": "string", f"constraint": "must be inside of {User} class"}),
 ]
 
-# Query = Annotated[
-#     dict,
-#     PlainSerializer(lambda v: v.isoformat(), return_type=str),
-#     PlainValidator(validate_query),
-#     WithJsonSchema(
-#         {
-#             "type": "dict",
-#             "constraint": "can only contain the keys of the object specified in the schema key",
-#         }
-#     ),
-# ]
+Grade = conint(ge=1, le=12)
 
-Grade = Annotated[
-    str,
-    PlainSerializer(lambda v: v.isoformat(), return_type=str),
-    PlainValidator(validate_grade),
-    WithJsonSchema({"type": "int", "constraint": "in between 1 and 12"}),
-]
+# Grade = Annotated[
+#     int,
+#     PlainSerializer(lambda v: v.isoformat(), return_type=int),
+#     PlainValidator(validate_grade),
+#     WithJsonSchema({"type": "int", "constraint": "in between 1 and 12"}),
+# ]

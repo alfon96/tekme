@@ -4,12 +4,17 @@ from utils.setup import Setup
 
 
 def transform_data_types_for_mongodb(
-    query: dict = {}, isSearching: bool = True
+    query: dict = {},
+    isSearching: bool = True,
+    strict_mode: bool = False,
 ) -> dict:
     mongo_db_query = {}
 
     for x, y in query.items():
-        if isinstance(y, datetime) and isSearching:
+        if isinstance(y, list) and isSearching and not strict_mode:
+            mongo_db_query[x] = {"$in": [z for z in y]}
+
+        elif isinstance(y, datetime) and isSearching:
             mongo_db_query[x] = {"$gte": y, "$lt": y + timedelta(days=1)}
 
         elif isinstance(y, date):
@@ -30,9 +35,14 @@ def transform_data_types_for_mongodb(
     return mongo_db_query
 
 
-def get_create_query_for_mongo(document: dict = {}) -> dict:
-    if "id" in document.keys():
-        del document["id"]
+def get_create_query_for_mongo(document: dict | list[dict]) -> dict | list:
+    if isinstance(document, list):
+        for x in document:
+            if f"{Setup.id}" in x.keys():
+                del x[f"{Setup.id}"]
+    else:
+        if f"{Setup.id}" in document.keys():
+            del document[f"{Setup.id}"]
 
     return document
 
@@ -40,11 +50,17 @@ def get_create_query_for_mongo(document: dict = {}) -> dict:
 def get_read_query_for_mongo(
     search_query: dict = {},
     sensitive_data: bool = False,
+    is_user_query: bool = True,
+    strict_mode: bool = False,
 ):
-    search_query = transform_data_types_for_mongodb(search_query)
+    search_query = transform_data_types_for_mongodb(
+        query=search_query,
+        isSearching=True,
+        strict_mode=strict_mode,
+    )
 
     projections = {"_id": 0}
-    if not sensitive_data:
+    if not sensitive_data and is_user_query:
         projections.update({"password": 0, "phone": 0})
 
     pipeline = [

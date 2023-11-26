@@ -6,6 +6,9 @@ from utils.setup import Setup
 from fastapi import HTTPException, Request
 from schemas import schemas, custom_types
 from urllib.parse import parse_qs
+from typing import Union
+import json
+import urllib.parse
 
 JWT_SECRET = config("JWT_SECRET")
 JWT_ALGORITHM = config("JWT_ALGORITHM")
@@ -100,12 +103,45 @@ def check_admin(token):
 
 def decode_query(query: str) -> dict:
     """
-    Decodes a query string into a dictionary. For each key in the query string,
-    if there's only one value, it returns that value directly; otherwise, it returns a list of values.
+    Decodes a query string into a dictionary. If the query string is a URL-encoded JSON string,
+    it decodes it as JSON; otherwise, it treats it as a standard query string.
     """
-    parsed = parse_qs(query)
+    # Split the query string into separate parameters
+    params = query.split("&")
+    decoded_result = {}
 
-    # Convert each list of values into a single value if the list contains only one item
-    decoded = {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
+    for param in params:
+        # URL-decode each parameter
+        decoded_param = urllib.parse.unquote(param)
 
-    return decoded
+        # Check if the parameter is in JSON format
+        try:
+            # If it's JSON, load it and update the dictionary
+            json_part = json.loads(decoded_param)
+            if isinstance(json_part, dict):
+                decoded_result.update(json_part)
+        except json.JSONDecodeError:
+            # If it's not JSON, process as a standard key-value pair
+            key_value = decoded_param.split("=", 1)
+            if len(key_value) == 2:
+                key, value = key_value
+                decoded_result[key] = value
+
+    return decoded_result
+
+
+def decode_and_validate_query(
+    query: str, key_to_schema_map: Union[schemas.User, schemas.Data]
+) -> dict:
+    try:
+        # decode Query
+        decoded_query = decode_query(query)
+        base_model = schemas.complete_schema_mapping[key_to_schema_map]
+
+        return schemas.validate_query_over_schema(
+            base_model=base_model,
+            query=decoded_query,
+        )
+
+    except Exception as e:
+        raise e

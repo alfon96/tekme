@@ -15,8 +15,13 @@ class TestClassesUpdate(unittest.IsolatedAsyncioTestCase):
             "Authorization": "Bearer ",
         }
         self.url = "http://backend:80/classes/"
-        self.valid_search_queries = {"name": "A", "grade": 1}
-        self.valid_query = {
+
+        self.valid_search_query = {
+            "name": "A",
+            "grade": 1,
+            "students_id": ["some-id"],
+        }
+        self.update_query = {
             "name": "B",
             "grade": 2,
             "students_id": [
@@ -31,32 +36,37 @@ class TestClassesUpdate(unittest.IsolatedAsyncioTestCase):
             ],
             "details": ["some details"],
             "type": ["Art Focus"],
-            "search_query": self.valid_search_queries,
         }
 
-        self.params = {"multi": False}
-        self.invalid_queries = [
+        self.invalid_update_queries = [
             {
-                "invalid_" + key: value if key == k else self.valid_query[k]
-                for k, value in self.valid_query.items()
+                "invalid_" + key: value if key == k else self.update_query[k]
+                for k, value in self.update_query.items()
             }
-            for key in self.valid_query
+            for key in self.update_query
         ]
 
     async def update(
-        self, token: str = "", multi: bool = False, json: dict = {}, debug: bool = False
+        self,
+        token: str = "",
+        search_query: dict = None,
+        json: dict = {},
+        multi: bool = False,
+        debug: bool = False,
     ):
-        self.params["multi"] = f"{multi}"
+        """Update Endpoint"""
         self.headers["Authorization"] = f"Bearer {token}"
+        query = search_query if search_query else self.valid_search_query
+        params = f"query={SharedTestData.encode_queries(query)}&multi={multi}"
 
         async with aiohttp.ClientSession() as session:
             response = await session.patch(
-                self.url, headers=self.headers, params=self.params, json=json
+                self.url, headers=self.headers, params=params, json=json
             )
             if debug:
                 SharedTestData.debug_print(
                     self.headers,
-                    self.params,
+                    params,
                     json,
                     response.status,
                 )
@@ -67,32 +77,30 @@ class TestClassesUpdate(unittest.IsolatedAsyncioTestCase):
 
         # Only admins can update classes otherwise should return 401
         token = "Invalid Token"
-        status, _ = await self.update(token=token, json=self.valid_query)
+        status, _ = await self.update(token=token, json=self.update_query)
         assert status == 401
 
         for role in custom_types.User:
             if role.value != custom_types.User.ADMIN:
                 token = SharedTestData.tokens[role.value]
-                status, _ = await self.update(token=token, json=self.valid_query)
+                status, _ = await self.update(
+                    token=token, json=self.update_query, debug=False
+                )
                 assert status == 401
 
         # One field wrong must cause Unprocessasble entity 422
         token = SharedTestData.tokens[custom_types.User.ADMIN.value]
-        for invalid_query in self.invalid_queries:
-            status, _ = await self.update(
-                token=token,
-                json=invalid_query,
-            )
+        for invalid_query in self.invalid_update_queries:
+            status, _ = await self.update(token=token, json=invalid_query, debug=False)
 
             assert status == 422
 
         # One field wrong in the search_query must cause Unprocessasble entity 422
         token = SharedTestData.tokens[custom_types.User.ADMIN.value]
-        for invalid_query in self.invalid_queries:
-            invalid_search_query = {**self.valid_query, "search_query": invalid_query}
+        for invalid_query in self.invalid_update_queries:
+            invalid_search_query = {**self.update_query, "search_query": invalid_query}
             status, _ = await self.update(
-                token=token,
-                json=invalid_search_query,
+                token=token, json=invalid_search_query, debug=False
             )
             assert status == 422
 
@@ -102,9 +110,13 @@ class TestClassesUpdate(unittest.IsolatedAsyncioTestCase):
         "Single Update"
         token = SharedTestData.tokens[custom_types.User.ADMIN.value]
 
-        status, _ = await self.update(token=token, json=self.valid_query)
+        status, _ = await self.update(
+            token=token,
+            json=self.update_query,
+            debug=False,
+        )
         assert status == 200
 
         "Multi Update"
-        status, _ = await self.update(token=token, json=self.valid_query, multi=True)
+        status, _ = await self.update(token=token, json=self.update_query, multi=True)
         assert status == 200

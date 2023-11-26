@@ -15,10 +15,13 @@ class TestClassesRead(unittest.IsolatedAsyncioTestCase):
             "Authorization": "Bearer ",
         }
         self.url = "http://backend:80/classes/"
+
         self.valid_query = {
             "name": "A",
             "grade": 1,
+            "students_id": ["some-id"],
         }
+
         self.invalid_queries = [
             {
                 "invalid_" + key: value if key == k else self.valid_query[k]
@@ -27,13 +30,28 @@ class TestClassesRead(unittest.IsolatedAsyncioTestCase):
             for key in self.valid_query
         ]
 
-    async def read(self, token: str = "", search_query: dict = None):
-        params = self.valid_query if not search_query else search_query
+        self.valid_query_no_result = {
+            "name": "A",
+            "grade": 1,
+            "students_id": ["some-fake-id"],
+        }
+
+    async def read(
+        self,
+        token: str = "",
+        search_query: dict = None,
+        multi: bool = False,
+        debug: bool = False,
+    ):
+        """Read Endpoint"""
+        query = search_query if search_query else self.valid_query
+        params = f"query={SharedTestData.encode_queries(query)}&multi={multi}"
 
         self.headers["Authorization"] = f"Bearer {token}"
         async with aiohttp.ClientSession() as session:
             response = await session.get(self.url, headers=self.headers, params=params)
-
+            if debug:
+                SharedTestData.debug_print(token, params, query, response.status)
             return response.status, await response.json()
 
     async def test_fail_read_classes(self):
@@ -61,11 +79,22 @@ class TestClassesRead(unittest.IsolatedAsyncioTestCase):
             token = SharedTestData.tokens[role.value]
             status, class_data = await self.read(
                 token=token,
+                debug=False,
             )
-            data_obj = schemas.ThingsFactory.create_thing(
-                thing=schemas.Data.Class.value,
-                data=class_data,
-            )
+            assert class_data != None
 
+            data_obj = schemas.ThingsFactory.create_thing(
+                thing=schemas.Data.CLASS.value,
+                data=class_data["results"],
+            )
             assert data_obj != None
+
             assert status == 200
+
+        token = SharedTestData.tokens[custom_types.User.ADMIN.value]
+        status, class_data = await self.read(
+            token=token,
+            search_query=self.valid_query_no_result,
+            debug=False,
+        )
+        assert status == 404

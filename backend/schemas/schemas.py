@@ -4,8 +4,9 @@ from pydantic import (
     create_model,
     EmailStr,
     validator,
+    validator,
 )
-from typing import List, Optional, Union, Type
+from typing import List, Optional, Union, Annotated
 from datetime import datetime, date
 from fastapi import HTTPException
 from schemas.custom_types import (
@@ -16,6 +17,7 @@ from schemas.custom_types import (
     NameSurname,
     Phone,
     Grade,
+    validate_grade,
 )
 
 
@@ -83,12 +85,14 @@ class RelativeSensitiveData(Relative, UserSensitiveData):
 
 
 class Signin(BaseModel):
-    role: UserRole
     email: EmailStr
     password: Password
 
     class Config:
         extra = "forbid"
+
+    def get_email_query(self) -> dict:
+        return {"email": self.email}
 
 
 class UserFactory(BaseModel):
@@ -154,6 +158,9 @@ class ClassBase(BaseModel):
     class Config:
         extra = "forbid"
 
+    def get_class_info(self):
+        return f"{self.grade}_{self.name}"
+
 
 role_schema_map = {
     User.ADMIN: AdminSensitiveData,
@@ -162,30 +169,19 @@ role_schema_map = {
     User.RELATIVE: RelativeSensitiveData,
 }
 
+data_schema_map = {
+    Data.CLASS: ClassBase,
+    Data.SCORE: ScoreBase,
+}
+
+complete_schema_mapping = {**role_schema_map, **data_schema_map}
+
 role_schema_update_map = {
     User.ADMIN: Admin,
     User.TEACHER: Teacher,
     User.STUDENT: Student,
     User.RELATIVE: Relative,
 }
-
-
-def find_unique_fields(base_class: BaseModel, sub_class: BaseModel) -> BaseModel:
-    base_fields = set(base_class.__fields__)
-    sub_class_fields = set(sub_class.__fields__)
-    unique_fields = sub_class_fields - base_fields
-
-    # Prepare fields for the new model
-    try:
-        fields = {
-            field_name: (field.annotation, field.default)
-            for field_name, field in sub_class.__fields__.items()
-            if field_name in unique_fields
-        }
-        model = create_model("SubsetData", **fields)
-        return model
-    except Exception as e:
-        raise e
 
 
 def validate_query_over_schema(base_model: BaseModel, query: dict) -> BaseModel:

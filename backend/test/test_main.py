@@ -4,6 +4,8 @@ from decouple import config
 import motor.motor_asyncio
 import tracemalloc
 from schemas import schemas, custom_types
+import json
+import urllib.parse
 
 tracemalloc.start()
 
@@ -34,12 +36,16 @@ class SharedTestData:
     }
     classes_id: str = ""
 
-    debug_print = lambda x, y=None, z=None, t=None: (
-        print(x),
-        print(y),
-        print(z),
-        print(t),
-    )
+    debug_print = lambda *args: [print(x) for x in args]
+
+    def encode_queries(input_query: dict) -> str:
+        # Serializza l'intero dizionario in una stringa JSON
+        json_string = json.dumps(input_query)
+
+        # Codifica la stringa JSON per l'utilizzo nell'URL
+        encoded_query = urllib.parse.quote(json_string)
+
+        return encoded_query
 
 
 if __name__ == "__main__":
@@ -101,8 +107,8 @@ if __name__ == "__main__":
     )
 
     # Run the combined suite
-    runner = unittest.TextTestRunner()
-    runner.run(users_crud)
-
     # runner = unittest.TextTestRunner()
-    # runner.run(classes_crud)
+    # runner.run(users_crud)
+
+    runner = unittest.TextTestRunner()
+    runner.run(classes_crud)

@@ -6,6 +6,7 @@ from datetime import datetime
 from test.test_main import SharedTestData
 import json as json_
 import urllib.parse
+import datetime
 
 
 class TestClassesCreate(unittest.IsolatedAsyncioTestCase):
@@ -25,19 +26,24 @@ class TestClassesCreate(unittest.IsolatedAsyncioTestCase):
             "teachers_id": ["some-id", "some-id", "some-id"],
             "details": ["Scientific Focus"],
             "type": ["Experimental"],
+            "creation": datetime.datetime.now().isoformat(),
         }
         self.invalid_classes_data = [
             {**self.valid_classes_data, f"invalid_{x}": self.valid_classes_data[x]}
             for x in self.valid_classes_data.keys()
         ]
 
-    async def create(self, token: str = "", class_data: dict = None):
+    async def create(
+        self, token: str = "", class_data: dict = None, debug: bool = False
+    ):
         json = self.valid_classes_data if not class_data else class_data
 
         self.headers["Authorization"] = f"Bearer {token}"
 
         async with aiohttp.ClientSession() as session:
             response = await session.post(self.url, headers=self.headers, json=json)
+            if debug:
+                SharedTestData.debug_print(token, json, response.status)
             return response.status, await response.json()
 
     def generate_encoded_query_string(query_params):
@@ -76,6 +82,7 @@ class TestClassesCreate(unittest.IsolatedAsyncioTestCase):
 
         status, json = await self.create(
             token=token,
+            debug=False,
         )
         id = json.get("id")
 
@@ -86,7 +93,11 @@ class TestClassesCreate(unittest.IsolatedAsyncioTestCase):
         # Create N classes
         token = SharedTestData.tokens[custom_types.User.ADMIN.value]
         class_data = [self.valid_classes_data for x in range(5)]
-        status, json = await self.create(token=token, class_data=class_data)
+        status, json = await self.create(
+            token=token,
+            class_data=class_data,
+            debug=False,
+        )
         ids = [item.get("id") for item in json]
 
         assert len(ids) > 0
