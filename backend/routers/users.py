@@ -40,13 +40,18 @@ def password_validator(password: str) -> str:
 async def signup(
     user_data: schemas.AdminSensitiveData
     | schemas.TeacherSensitiveData
-    | schemas.ScoreBase
+    | schemas.StudentSensitiveData
     | schemas.RelativeSensitiveData,
     user_role: custom_types.User,
     db: Database = Depends(get_db),
 ):
     """Register a new user. Encrypts the password and adds user-specific data based on their role."""
 
+    if not isinstance(user_data, schemas.complete_schema_mapping[user_role.value]):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Check your fields, valid fields are {set(schemas.complete_schema_mapping[user_role.value].__fields__.keys())}",
+        )
     # Hash Password
     hashed_password = encryption.encrypt_password(user_data.password)
     user_data.password = hashed_password

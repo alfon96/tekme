@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useFormValidation } from "../hooks/use-form-validation";
 
 const LoginPage = () => {
-  const [role, setRole] = useState("Teachers");
+  const [role, setRole] = useState("teachers");
   const { isLoading, error, sendRequest } = useHttp();
   let navigate = useNavigate();
 
@@ -27,7 +27,7 @@ const LoginPage = () => {
     if (!isSubmitting) {
       // Perform the submission logic
       try {
-        const url = `http://localhost:8000/users/signin?role=${role}`;
+        const url = `http://localhost:8000/users/signin?user_role=${role}`;
         const body = { email: formState.email, password: formState.password };
 
         const data = await sendRequest({
@@ -115,23 +115,23 @@ const LoginPage = () => {
                   <Form.Check
                     type="radio"
                     label="Teachers"
-                    id="Teachers"
-                    checked={role === "Teachers"}
-                    onChange={() => setRole("Teachers")}
+                    id="teachers"
+                    checked={role === "teachers"}
+                    onChange={() => setRole("teachers")}
                   />
                   <Form.Check
                     type="radio"
                     label="Students"
                     id="Students"
-                    checked={role === "Students"}
-                    onChange={() => setRole("Students")}
+                    checked={role === "students"}
+                    onChange={() => setRole("students")}
                   />
                   <Form.Check
                     type="radio"
-                    label="Parents"
-                    id="Parents"
-                    checked={role === "Parents"}
-                    onChange={() => setRole("Parents")}
+                    label="Relatives"
+                    id="relatives"
+                    checked={role === "relatives"}
+                    onChange={() => setRole("relatives")}
                   />
                 </Form.Group>
 

@@ -7,6 +7,7 @@ import { updateData } from "../../store/editingSlice";
 import useHttp from "../../hooks/use-http";
 import classes from "./Classes.module.scss";
 import { v4 as uuidv4 } from "uuid";
+import StudentCard from "../StudentCard/StudentCard";
 
 const Classes = () => {
   const dispatch = useDispatch();
@@ -27,10 +28,12 @@ const Classes = () => {
     const fetchData = async () => {
       if (currentData.length === 0) {
         try {
-          const url = `http://localhost:8000/users/classes/${dataTitle}`;
+          const url = `http://localhost:8000/classes/?query=name%3D${dataTitle[1]}%26grade%3D${dataTitle[0]}&multi=false`;
           const headers = { Authorization: `Bearer ${token}` };
+          console.log(token);
+          console.log(dataTitle[0]);
           const response = await sendRequest({ url, method: "GET", headers });
-          const studentsWithIds = addUniqueIds(response.students);
+          const studentsWithIds = addUniqueIds(response.results.students);
 
           dispatch(updateData(...studentsWithIds));
         } catch (error) {
@@ -45,7 +48,7 @@ const Classes = () => {
   return (
     <Container fluid className={`${classes.tableContainer} py-4 rounded-5`}>
       {isLoading && <Spinner />}
-      {!isLoading && !error && <DataTable />}
+      {!isLoading && !error && <StudentCard student={response} />}
       {error && <p>There was an error</p>}
     </Container>
   );

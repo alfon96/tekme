@@ -66,7 +66,7 @@ class Student(UserBase):
 
 
 class Relative(UserBase):
-    children_id: List[str] = []
+    students_id: List[str] = []
 
 
 class AdminSensitiveData(Admin, UserSensitiveData):
@@ -135,7 +135,7 @@ class ScoreBase(BaseModel):
     breaks: Score
     date: datetime
     details: Optional[list[str]] = []
-    teacher_id: Optional[str] = None
+    teachers_id: Optional[str] = None
     students_id: Union[str, List[str]]
     creation: datetime
 
@@ -218,7 +218,10 @@ def validate_query_over_schema(base_model: BaseModel, query: dict) -> BaseModel:
         validated_query = model(**query)
         return validated_query.dict()
     except ValidationError as e:
-        raise e
+        raise HTTPException(
+            status_code=422,
+            detail=f"The type of your query don't match the schema. Details: {str(e)}",
+        )
 
     # Create a new dynamic model
 

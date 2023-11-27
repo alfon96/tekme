@@ -70,6 +70,7 @@ async def read_n_classes(
         "results": classes_data,
         "count": len(classes_data) if isinstance(classes_data, list) else None,
     }
+    print(response)
 
     # Send Response
     return response

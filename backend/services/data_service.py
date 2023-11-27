@@ -41,7 +41,6 @@ async def read_service(
     strict_mode: bool = False,
 ):
     # Decode and validate input query against exact user class
-
     search_query = prepare_query(
         search_query=search_query,
         key_to_schema_map=key_to_schema_map,
@@ -53,6 +52,7 @@ async def read_service(
         search_query=search_query,
         sensitive_data=isSensitive,
         strict_mode=strict_mode,
+        key_to_schema_map=key_to_schema_map
     )
 
     result = await crud.read_n_documents(

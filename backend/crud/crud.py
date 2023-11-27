@@ -40,7 +40,7 @@ async def read_n_documents(
     Read one or multiple documents from the specified collection.
     Can be used to read a specific user or perform a general query.
     """
-
+    print(pipeline)
     cursor = db[collection].aggregate(pipeline)
     if multi:
         return await cursor.to_list(length=None)
