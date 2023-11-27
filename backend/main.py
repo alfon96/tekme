@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from routers.users import users
 from routers.classes import classes
+from routers.scores import scores
+from routers.admins import admins
 
-# from routers.scores import scores
 from fastapi.middleware.cors import CORSMiddleware
 
 import debugpy
@@ -28,9 +29,10 @@ def create_app():
     def read_root():
         return {"Hello": "World"}
 
+    app.include_router(admins)
     app.include_router(users)
     app.include_router(classes)
-    # app.include_router(scores)
+    app.include_router(scores)
 
     return app
 

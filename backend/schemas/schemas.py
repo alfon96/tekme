@@ -9,6 +9,7 @@ from pydantic import (
 from typing import List, Optional, Union, Annotated
 from datetime import datetime, date
 from fastapi import HTTPException
+from enum import Enum
 from schemas.custom_types import (
     User,
     Data,
@@ -17,7 +18,7 @@ from schemas.custom_types import (
     NameSurname,
     Phone,
     Grade,
-    validate_grade,
+    Score,
 )
 
 
@@ -129,12 +130,12 @@ class UserFactory(BaseModel):
 class ScoreBase(BaseModel):
     """Schema representing a score."""
 
-    id: Optional[str]
-    classes: int
-    breaks: int
-    datetime: datetime
+    id: Optional[str] = None
+    classes: Score
+    breaks: Score
+    date: datetime
     details: Optional[list[str]] = []
-    teacher_id: str
+    teacher_id: Optional[str] = None
     students_id: Union[str, List[str]]
     creation: datetime
 
@@ -182,6 +183,13 @@ role_schema_update_map = {
     User.STUDENT: Student,
     User.RELATIVE: Relative,
 }
+
+
+not_admin_users = {
+    name: value for name, value in User.__members__.items() if value != User.ADMIN.value
+}
+
+NotAdminUsers = Enum("NotAdminUsers", not_admin_users)
 
 
 def validate_query_over_schema(base_model: BaseModel, query: dict) -> BaseModel:

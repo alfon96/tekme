@@ -40,11 +40,11 @@ async def create_n_classes(
 
     if isinstance(classes_data, list):
         return [
-            {"id": str(id_), "info": obj_.get_class_info()}
+            {"id": id_, "info": obj_.get_class_info()}
             for obj_, id_ in zip(classes_data, classes_ids)
         ]
     else:
-        return {"id": str(classes_ids), "info": classes_data.get_class_info()}
+        return {"id": classes_ids, "info": classes_data.get_class_info()}
 
 
 @classes.get("/")

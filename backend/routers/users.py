@@ -61,7 +61,7 @@ async def signup(
     token = encryption.create_jwt_token(user_id, user_role)
 
     # Return response
-    return {"token": token, "message": "User created successfully"}
+    return {"token": token, "id": user_id}
 
 
 @users.post("/signin")
@@ -207,32 +207,6 @@ async def update_user(
     )
 
 
-@users.patch("/admin_update")
-@handle_mongodb_exceptions
-async def update_other_user(
-    user_id: str,
-    user_role: schemas.User,
-    update_data: dict,
-    db: Database = Depends(get_db),
-    _: dict = Depends(
-        read_token_from_header_factory(
-            roles=[
-                schemas.User.ADMIN,
-            ]
-        )
-    ),
-) -> dict:
-    """Update user data based on the user role."""
-
-    search_query = {f"{Setup.id}": user_id}
-    return await data_service.update_service(
-        search_query=search_query,
-        update_query=update_data,
-        key_to_schema_map=user_role,
-        db=db,
-    )
-
-
 @users.delete("/")
 @handle_mongodb_exceptions
 async def delete_user(
@@ -261,29 +235,6 @@ async def delete_user(
     if not encryption.check_password(password, user_data["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    return await data_service.delete_service(
-        search_query=search_query,
-        key_to_schema_map=user_role,
-        db=db,
-    )
-
-
-@users.delete("/{user_id}")
-@handle_mongodb_exceptions
-async def delete_other_user(
-    user_id: str,
-    user_role: schemas.User,
-    db: Database = Depends(get_db),
-    _: str = Depends(
-        read_token_from_header_factory(
-            roles=[
-                schemas.User.ADMIN,
-            ]
-        )
-    ),
-):
-    """Delete a user after verifying their password."""
-    search_query = {f"{Setup.id}": user_id}
     return await data_service.delete_service(
         search_query=search_query,
         key_to_schema_map=user_role,

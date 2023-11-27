@@ -17,6 +17,7 @@ class Data(Enum):
     SCORE = config("SCORES_COLLECTION")
 
 
+
 class User(str, Enum):
     ADMIN = config("ADMIN_COLLECTION")
     STUDENT = config("STUDENTS_COLLECTION")
@@ -114,6 +115,8 @@ UserRole = Annotated[
 ]
 
 Grade = conint(ge=1, le=12)
+
+Score = conint(ge=1, le=10)
 
 # Grade = Annotated[
 #     int,

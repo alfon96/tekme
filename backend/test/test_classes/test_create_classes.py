@@ -46,14 +46,6 @@ class TestClassesCreate(unittest.IsolatedAsyncioTestCase):
                 SharedTestData.debug_print(token, json, response.status)
             return response.status, await response.json()
 
-    def generate_encoded_query_string(query_params):
-        # Convert the dictionary to a JSON string
-        json_string = json_.dumps(query_params)
-
-        # URL-encode the JSON string
-        encoded_string = urllib.parse.quote(json_string)
-
-        return encoded_string
 
     async def test_fail_create_classes(self):
         """Create Classes - Fail"""

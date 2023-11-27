@@ -43,7 +43,7 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
                 SharedTestData.debug_print(params, json, response.status)
             return response.status, await response.json()
 
-    async def test_fail_create(self):
+    async def test_fail_create_user(self):
         """Create User - Fail"""
 
         # A not valid input user_role should return 401
@@ -72,7 +72,7 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
         )
         assert status == 422
 
-    async def test_pass_create(self):
+    async def test_pass_create_user(self):
         """Create User - Pass"""
 
         # Check for all roles
@@ -89,6 +89,9 @@ class TestUserCreate(unittest.IsolatedAsyncioTestCase):
             token = json.get("token")
             assert status == 200
             assert token is not None
+            id = json.get("id")
+            assert id != None
+            SharedTestData.user_role_id[role] = id
             SharedTestData.tokens[role] = token
 
         async def asyncTearDown(self):
