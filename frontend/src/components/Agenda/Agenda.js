@@ -24,10 +24,10 @@ const Agenda = (props) => {
   return (
     <Container className="">
       <Card className="shadow-lg border-0 p-3 bg-light">
-        <Card.Body className="d-flex flex-column ">
-          <Card.Title>Welcome back {userName},</Card.Title>
-          <Card.Text> Here is your agenda for</Card.Text>
-          <Form className="mx-auto">
+        <Card.Body className="d-flex flex-column">
+          <Card.Title className="lh-1">Welcome back {userName},</Card.Title>
+          <Card.Text className="lh-2"> Here is your agenda for</Card.Text>
+          <Form className="mx-auto ">
             <Form.Group controlId="formDate">
               <Form.Control
                 type="date"
@@ -35,14 +35,14 @@ const Agenda = (props) => {
                 value={formState.date}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className="text-center border-0 w-100 bg-light"
+                className="text-center border-0 w-100 bg-light text-primary  fw-semibold"
               />
               {errors.date && (
                 <Form.Text className="text-danger">{errors.date}</Form.Text>
               )}
             </Form.Group>
           </Form>
-          <Container className="px-4 mt-3 d-flex flex-column align-items-center">
+          <Container className="px-4 mt-13 d-flex flex-column align-items-center">
             <TimeTable timeTable={timeTable}></TimeTable>
           </Container>
         </Card.Body>

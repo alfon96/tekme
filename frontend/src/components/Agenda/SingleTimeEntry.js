@@ -23,10 +23,10 @@ const SingleTimeEntry = (props) => {
       onClick={() => {}}
     >
       <Row>
-        <Col xs={3} className="">
+        <Col xs={3} className="text-muted">
           {mappingHour[hour]}
         </Col>
-        <Col xs={5} className="text-start ">
+        <Col xs={5} className="text-start text-muted">
           {subject}
         </Col>
         <Col xs={1} className="fw-semibold text-end text-primary">

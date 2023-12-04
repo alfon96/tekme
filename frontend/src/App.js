@@ -36,7 +36,6 @@ function App() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/signin" element={<LoginPage />} />
         <Route path="/home" element={<SearchPage />} />
-
         <Route path="/calendar" element={<FetchPageCalendar />} />
       </Routes>
     </Router>
