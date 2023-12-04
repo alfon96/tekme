@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { resetError, setDataTitle } from "../../store/editingSlice";
 import { Toast, ToastContainer } from "react-bootstrap";
 import Badge from "react-bootstrap/Badge";
+import Agenda from "../Agenda/Agenda";
 
 const HomePage = () => {
   const dataTitle = useSelector((state) => state.editing.dataTitle);
@@ -89,6 +90,7 @@ const HomePage = () => {
           <div className="pt-6"></div>
 
           {dataTitle != "" && <Classes></Classes>}
+          {dataTitle == "" && <Agenda></Agenda>}
           <ToastContainer position="bottom-end" className="m-2 ">
             <Toast
               show={tableError}

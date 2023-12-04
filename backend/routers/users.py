@@ -93,12 +93,13 @@ async def signin(
         user_id=str(user_data[f"{Setup.id}"]),
         user_role=user_role,
     )
-
+    full_name = f"{user_data['name']} {user_data['surname']}"
     # Return the response
     return {
         "token": token,
         f"{Setup.id}": user_data[f"{Setup.id}"],
         f"{Setup.role}": user_role,
+        f"full_name": full_name,
     }
 
 

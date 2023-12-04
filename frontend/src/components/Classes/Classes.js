@@ -48,7 +48,7 @@ const Classes = () => {
   return (
     <Container fluid className={`${classes.tableContainer} py-4 rounded-5`}>
       {isLoading && <Spinner />}
-      {!isLoading && !error && <StudentCard student={response} />}
+      {/* {!isLoading && !error && <StudentCard student={response} />} */}
       {error && <p>There was an error</p>}
     </Container>
   );

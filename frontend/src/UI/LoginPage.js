@@ -40,6 +40,7 @@ const LoginPage = () => {
           user_id: data.user_id,
           role: data.role,
           token: data.token,
+          fullName: data.full_name,
         };
 
         dispatch(login(userData));

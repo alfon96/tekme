@@ -18,7 +18,13 @@ const validationSchema = Yup.object().shape({
     })
     .max(new Date(), "Date of birth cannot be in the future")
     .required("Date of birth is required")
-    .typeError("Date of birth is not valid"), // Messaggio personalizzato per tipo non valido
+    .typeError("Date of birth is not valid"),
+  date: Yup.date()
+    .transform((value, originalValue) => {
+      return originalValue === "" ? null : new Date(originalValue);
+    })
+    .required("Date required")
+    .typeError("Date is not valid"), // Messaggio personalizzato per tipo non valido
 });
 
 export const useFormValidation = (initialState) => {
@@ -40,7 +46,7 @@ export const useFormValidation = (initialState) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     setFormState((prev) => ({ ...prev, [name]: value }));
 
     // Se il campo è stato già toccato, valida al cambiamento
