@@ -11,6 +11,7 @@ export const classesSlice = createSlice({
     details: [],
     students_details: [],
     teachers_details: [],
+    presences: [],
   },
   reducers: {
     setClassesData: (state, action) => {
@@ -23,6 +24,10 @@ export const classesSlice = createSlice({
       state.type = type;
       state.students_details = students_details;
       state.teachers_details = teachers_details;
+      state.presences = [];
+    },
+    setPresences: (state, action) => {
+      state.presences = action.payload;
     },
   },
 });

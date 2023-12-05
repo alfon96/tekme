@@ -3,8 +3,10 @@ import LoginPage from "./UI/LoginPage";
 import FetchPageCalendar from "./components/Calendar/FetchPageCalendar";
 import { useSelector } from "react-redux";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import SearchPage from "./components/HomePage/HomePage";
+import HomePage from "./components/HomePage/HomePage";
 import useHttp from "./hooks/use-http";
+import Agenda from "./components/Agenda/Agenda";
+import Classes from "./components/Classes/Classes";
 
 function App() {
   const token = useSelector((state) => state.token);
@@ -35,7 +37,9 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/signin" element={<LoginPage />} />
-        <Route path="/home" element={<SearchPage />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/agenda/*" element={<HomePage />} />
+        <Route path="/classes/*" element={<HomePage />} />
         <Route path="/calendar" element={<FetchPageCalendar />} />
       </Routes>
     </Router>

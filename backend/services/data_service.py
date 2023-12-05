@@ -52,7 +52,7 @@ async def read_service(
         search_query=search_query,
         sensitive_data=isSensitive,
         strict_mode=strict_mode,
-        key_to_schema_map=key_to_schema_map
+        key_to_schema_map=key_to_schema_map,
     )
 
     result = await crud.read_n_documents(
@@ -190,4 +190,41 @@ async def delete_service(
     return {
         "status": "Item deleted successfully",
         "count": result.deleted_count,
+    }
+
+
+async def profile_pic_service(
+    user_id: str,
+    user_role: str,
+    db: AsyncGenerator[AsyncIOMotorDatabase, None],
+    base64_image: str,
+):
+    search_query, update_query = queries.get_update_profile_pic_query(
+        user_id, base64_image
+    )
+
+    result = await crud.update_n_documents(
+        update_query=update_query,
+        collection=user_role,
+        db=db,
+        multi=False,
+        search_query=search_query,
+    )
+
+    # Check if the update was successful
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=404, detail=f"No user found with {search_query}."
+        )
+
+    if result.modified_count < 1:
+        raise HTTPException(
+            status_code=200,
+            detail="The dB was already up to date.",
+        )
+
+    # Return a success response if the update is successful
+    return {
+        "status": "Fields have been modified successfully",
+        "count": result.modified_count,
     }

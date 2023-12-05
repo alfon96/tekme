@@ -3,7 +3,7 @@ import storage from "redux-persist/lib/storage";
 import { persistReducer, persistStore } from "redux-persist";
 import { encryptTransform } from "redux-persist-transform-encrypt";
 import userReducer from "./userSlice";
-import editingSlice from "./editingSlice";
+import selectorSlice from "./selectorSlice";
 import classesSlice from "./classesSlice";
 
 const secretKey = process.env.REACT_APP_SECRET_KEY;
@@ -22,14 +22,17 @@ const persistConfig = {
   ],
 };
 
-// Since you only have one reducer, pass it directly to persistReducer
-const persistedReducer = persistReducer(persistConfig, userReducer);
+const persistedUserAuthenticationReducer = persistReducer(
+  persistConfig,
+  userReducer
+);
+const persistedClassesInfoReducer = persistReducer(persistConfig, classesSlice);
 
 export const store = configureStore({
   reducer: {
-    auth: persistedReducer,
-    editing: editingSlice,
-    classes: classesSlice,
+    auth: persistedUserAuthenticationReducer,
+    selector: selectorSlice,
+    classes: persistedClassesInfoReducer,
   },
 });
 

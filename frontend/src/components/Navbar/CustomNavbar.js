@@ -13,6 +13,7 @@ import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { useDispatch } from "react-redux";
 import { logout } from "../../store/userSlice";
 import { useNavigate } from "react-router-dom";
+import { setActiveComponentIndex } from "../../store/selectorSlice";
 
 const CustomNavbar = () => {
   const dispatch = useDispatch();
@@ -58,7 +59,16 @@ const CustomNavbar = () => {
               </Form>
 
               <Nav className="justify-content-end align-items-center flex-grow-1 pe-3">
-                <Nav.Link onClick={() => navigate("/home")}>Home</Nav.Link>
+                <Nav.Link
+                  onClick={() => {
+                    navigate("/home");
+                    dispatch(
+                      setActiveComponentIndex({ activeComponentIndex: 0 })
+                    );
+                  }}
+                >
+                  Home
+                </Nav.Link>
                 <Nav.Link href="#action2">Chat</Nav.Link>
                 <NavDropdown
                   title="Actions"

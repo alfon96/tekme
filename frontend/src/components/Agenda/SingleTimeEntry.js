@@ -2,6 +2,8 @@ import { Row, Col } from "react-bootstrap";
 import { Container } from "react-bootstrap";
 import classes from "./SingleTimeEntry.module.scss";
 import Button from "react-bootstrap/Button";
+
+
 const SingleTimeEntry = (props) => {
   const hour = props.singleEntry.hour;
   const subject = props.singleEntry.subject[0];

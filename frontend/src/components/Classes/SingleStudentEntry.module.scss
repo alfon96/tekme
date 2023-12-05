@@ -1,0 +1,16 @@
+.profileImg {
+  height: 55px;
+  width: 55px;
+  position: relative;
+}
+
+.profileImg::after {
+  content: "s";
+  background-color: green;
+  border-radius: 50%;
+  height: 5px;
+  width: 5px;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}

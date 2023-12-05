@@ -14,6 +14,10 @@ from pydantic import TypeAdapter
 import json
 from crud import queries
 from services import data_service
+from fastapi import File, UploadFile, Depends
+from io import BytesIO
+import shutil
+import base64
 
 users = APIRouter(prefix="/users", tags=["Users"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/signin")
@@ -245,4 +249,27 @@ async def delete_user(
         search_query=search_query,
         key_to_schema_map=user_role,
         db=db,
+    )
+
+
+@users.post("/upload-image/")
+async def create_upload_profile_picture(
+    file: UploadFile = File(...),
+    db: Database = Depends(get_db),
+    token_payload=Depends(read_token_from_header_factory()),
+):
+    # Read the image file and encode the binary image data to Base64
+    contents = await file.read()
+    base64_encoded_image = (
+        f"data:image/png;base64,{base64.b64encode(contents).decode('utf-8')}"
+    )
+
+    user_id = token_payload[f"{Setup.id}"]
+    user_role = token_payload[f"{Setup.role}"]
+
+    return await data_service.profile_pic_service(
+        user_id=user_id,
+        user_role=user_role,
+        db=db,
+        base64_image=base64_encoded_image,
     )

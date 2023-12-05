@@ -1,0 +1,21 @@
+.profileImgWrapper {
+  position: relative;
+  display: inline-block; // Ensures proper positioning context
+}
+
+.profileImg {
+  height: 50px !important;
+  width: 50px !important;
+}
+
+.profileImgWrapper::after {
+  content: "";
+  background-color: var(--after-bg-color);
+  border: solid 1px white;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  position: absolute;
+  top: 0;
+  right: 0;
+}

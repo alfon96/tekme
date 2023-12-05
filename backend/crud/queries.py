@@ -110,7 +110,14 @@ def generate_set_stages(key_to_schema_map: str, pattern: str):
             "$set": {
                 f"{field[:-3]}_details": {
                     "$map": {
-                        "input": f"${field[:-3]}_details",
+                        "input": {
+                            "$sortArray": {  # Sort the array of looked up documents
+                                "input": f"${field[:-3]}_details",
+                                "sortBy": {
+                                    "surname": 1
+                                },  # Sort by 'surname' in ascending order
+                            }
+                        },
                         "as": "item",
                         "in": {
                             "$mergeObjects": [
@@ -233,3 +240,9 @@ def convert_id_to_str(
     # Additonally in mongo db every document will have an id that needs to be renamed and converted.
     project = {"id": {"$toString": "$_id"}, **project_fields}
     return project
+
+
+def get_update_profile_pic_query(user_id: str, binary_image: bytes):
+    search_query = {"_id": ObjectId(user_id)}
+    update_query = {"$set": {"profile_pic": binary_image}}
+    return search_query, update_query
