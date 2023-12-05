@@ -12,10 +12,10 @@ from utils.setup import Setup
 import urllib.parse
 
 
-class Data(Enum):
+class Data(str, Enum):
     CLASS = config("CLASSES_COLLECTION")
     SCORE = config("SCORES_COLLECTION")
-
+    ATTENDANCE = config("ATTENDANCES_COLLECTION")
 
 
 class User(str, Enum):

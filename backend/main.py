@@ -3,6 +3,7 @@ from routers.users import users
 from routers.classes import classes
 from routers.scores import scores
 from routers.admins import admins
+from routers.attendances import attendances
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -33,6 +34,7 @@ def create_app():
     app.include_router(users)
     app.include_router(classes)
     app.include_router(scores)
+    app.include_router(attendances)
 
     return app
 

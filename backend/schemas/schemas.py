@@ -143,6 +143,19 @@ class ScoreBase(BaseModel):
         extra = "forbid"
 
 
+class AttendanceBase(BaseModel):
+    """Schema representing an attendance register."""
+
+    id: Optional[str] = None
+    classes_id: str
+    teachers_id: List[str]
+    students_id: List[str]
+    date: datetime
+
+    class Config:
+        extra = "forbid"
+
+
 # Class schema
 class ClassBase(BaseModel):
     """Schema representing a class."""
@@ -173,16 +186,10 @@ role_schema_map = {
 data_schema_map = {
     Data.CLASS: ClassBase,
     Data.SCORE: ScoreBase,
+    Data.ATTENDANCE: AttendanceBase,
 }
 
 complete_schema_mapping = {**role_schema_map, **data_schema_map}
-
-role_schema_update_map = {
-    User.ADMIN: Admin,
-    User.TEACHER: Teacher,
-    User.STUDENT: Student,
-    User.RELATIVE: Relative,
-}
 
 
 not_admin_users = {
@@ -236,6 +243,7 @@ class ThingsFactory(BaseModel):
         thing_to_class = {
             Data.CLASS.value: ClassBase,
             Data.SCORE.value: ScoreBase,
+            Data.ATTENDANCE.value: AttendanceBase,
         }
 
         target_class = thing_to_class.get(thing)
@@ -252,3 +260,12 @@ class ThingsFactory(BaseModel):
 
         # Create the user object
         return target_class(**filtered_data)
+
+
+
+
+
+
+
+
+

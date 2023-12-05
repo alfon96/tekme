@@ -105,39 +105,57 @@ def generate_set_stages(key_to_schema_map: str, pattern: str):
     sensitive_fields = set(schemas.UserSensitiveData.__fields__.keys())
     base_fields = set(schemas.UserBase.__fields__.keys())
     fields_to_exclude = sensitive_fields - base_fields
-    return [
-        {
-            "$set": {
-                f"{field[:-3]}_details": {
-                    "$map": {
-                        "input": {
-                            "$sortArray": {  # Sort the array of looked up documents
-                                "input": f"${field[:-3]}_details",
-                                "sortBy": {
-                                    "surname": 1
-                                },  # Sort by 'surname' in ascending order
-                            }
-                        },
-                        "as": "item",
-                        "in": {
-                            "$mergeObjects": [
-                                {"id": {"$toString": "$$item._id"}},
-                                {
-                                    k: "$$item." + k
-                                    for k in schemas.complete_schema_mapping[
-                                        field[:-3]
-                                    ].__fields__
-                                    if k not in fields_to_exclude and k != "_id"
-                                },
-                            ]
-                        },
+
+    try:
+        return [
+            {
+                "$set": {
+                    f"{field[:-3]}_details": {
+                        "$map": {
+                            "input": {
+                                "$sortArray": {  # Sort the array of looked up documents
+                                    "input": f"${field[:-3]}_details",
+                                    "sortBy": {
+                                        "surname": 1
+                                    },  # Sort by 'surname' in ascending order
+                                }
+                            },
+                            "as": "item",
+                            "in": {
+                                "$mergeObjects": [
+                                    {"id": {"$toString": "$$item._id"}},
+                                    {
+                                        k: {
+                                            "$cond": {
+                                                "if": {"$isArray": f"$$item.{k}"},
+                                                "then": {
+                                                    "$map": {
+                                                        "input": f"$$item.{k}",
+                                                        "as": "id",
+                                                        "in": {"$toString": "$$id"},
+                                                    }
+                                                },
+                                                "else": {"$toString": f"$$item.{k}"},
+                                            }
+                                        }
+                                        if k.endswith("_id")
+                                        else f"$$item.{k}"
+                                        for k in schemas.complete_schema_mapping[
+                                            field[:-3]
+                                        ].__fields__
+                                        if k not in fields_to_exclude and k != "_id"
+                                    },
+                                ]
+                            },
+                        }
                     }
                 }
             }
-        }
-        for field in base_class_fields
-        if re.match(pattern, field)
-    ]
+            for field in base_class_fields
+            if re.match(pattern, field)
+        ]
+    except Exception as e:
+        raise e
 
 
 def get_lookup_query(key_to_schema_map: str) -> list | None:
